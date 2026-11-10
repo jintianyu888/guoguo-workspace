@@ -1,0 +1,17 @@
+state/
+data/
+media/
+*.db
+*.sqlite
+*.sqlite3
+*.tar.gz
+*.zip
+*.bak*
+.env
+secrets*
+venv/
+*-venv/
+node_modules/
+*.png
+*.jpg
+*.log
