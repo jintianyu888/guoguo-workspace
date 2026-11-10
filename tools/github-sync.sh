@@ -47,6 +47,8 @@ if git diff --cached --quiet; then
   echo "无变更"; log "no-change"; exit 0
 fi
 git -c user.name=guoguo -c user.email=guoguo@localhost commit -q -m "sync $(date '+%F %H:%M') 脚本与文档快照"
+# 2026-11-10 主公令：同步前把当月工作日志从机器账本重渲染，随代码一起进仓
+/usr/bin/python3 "$W/tools/worklog.py" render >/dev/null 2>&1 || true
 SHA=$(git rev-parse --short HEAD)
 CNT=$(git ls-files | wc -l)
 SIZE=$(du -sh --exclude=.git . | cut -f1)

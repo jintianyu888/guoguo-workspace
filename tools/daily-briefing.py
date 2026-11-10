@@ -155,6 +155,18 @@ def build(slot):
         except Exception:
             pass
 
+    # 记录（2026-11-10 主公令：所有事情都要入账）
+    if slot == "evening":
+        try:
+            _wl = os.path.join(WS, "state/log/worklog.jsonl")
+            _n = 0
+            if os.path.exists(_wl):
+                _n = sum(1 for _l in open(_wl) if _l.strip() and ('"ts": "' + d) in _l)
+            L.append("\n▍记录")
+            L.append("· 今日工作日志 %d 条（state/log/worklog.jsonl）" % _n)
+        except Exception:
+            pass
+
     # 五大管家
     L.append("\n▍五大管家")
     for aid, cn in BUTLERS:
