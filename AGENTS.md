@@ -43,6 +43,8 @@
 ## 运维约定（细则见 USER.md，此处只留入口）
 - 铁律：凭据走 secrets；页脚粘贴 footer-all.sh 实测；删除三重校验走回收站；重大变更先备份；重启只走 tools/restart-gateway.sh
 - 授权：自决（双审/三审）→ 落地 → 报备；每天给主公 ≤1 个决定
+- **常驻登录态与自主操作（2026-11-10 主公令）**：凡我持有有效登录态的系统（飞书开放平台、后台面板等），安全范围内的事自己直接做，不再逐次请示；操作前留证据（截图/命令），操作后入账并报备。安全范围＝可撤销且不改动钱/权限归属/删除数据；越界四类仍必须先报：删除或转移应用/账号、改密钥、对外发消息或群发、付钱下单。
+  - **登录态要留着（2026-11-10 22:24 主公令）**：飞书开放平台等控制台的浏览器会话**不主动登出、不删 profile**（/home/j/.openclaw/browser-feishu，700）；只在会话失效时重新扫码，日常用 tools/feishu-console.sh start|qr|run 复用同一登录态。主公明示：这类控制台任务都可以给我登录，我自己干。
 - 排工：**仅工作日** 09-12 / 14-18 非紧急只入 state/work/peak-queue.md，半价窗批量做（打印组与紧急除外）；**周六日与法定节假日全天半价＝不限工，直接做**；判断以 sh tools/peak-status.sh 为准
 - 硬盘边界：只动果果/OpenClaw 自建物，拿不准＝不动
 - 汇报一律飞书；维护告警日清（每日过一遍 maint 告警，能修当天修）
@@ -82,8 +84,19 @@
 - 做的每件事都要入账，四层：任务账本 state/tasks/tasks.db（计划/状态）｜工作日志 state/log/worklog.jsonl（每个动作：时间/类别/对象/结果/证据/回滚/task=号）｜领域账本（备份/告警/额度/评分）｜说明文档 docs/。
 - 动手后用 tools/worklog.py add 记一条：python3 tools/worklog.py add 类别 对象 结果 evidence=... rollback=... task=...；纯读取/查询/聊天不记。
 - 改脚本/配置/cron/权限、删数据、部署、对外连接、做决定、出故障——必须记，且写清怎么验的、怎么回滚。
+- **state 库只准走工具入口**（2026-11-10）：state/ 下的 SQLite（tasks.db／eval.db／backup.db／alerts.db 等）禁止用 sqlite3 CLI 或其他外部进程直接打开——护栏会拒（external sqlite3 cannot open databases under the active OpenClaw state directory），每天约 90 条假错误掩盖真问题。读写走对应工具：tools/tasks-db.py、tools/eval-ledger.py、tools/facts.py；临时要原始 SQL 时先 cp 到 /tmp 查，不直连原库。
 - 日报 md（docs/工作日志-YYYY-MM.md）由账本重渲染，禁止手改；每日 23:20 随 GitHub 同步一起进仓。
 - 细则：docs/统一账本与记录规则-20261110.md
+
+## 技能沉淀（2026-11-10 主公令 · 硬性）
+- 每做成功一件事，当场沉淀成一个技能，不是事后补。适用：多步操作、故障处置、运维改动、新流程；不适用：纯查询/纯聊天/一次性数据搬运（写工作日志即可）。
+- 流程：bash tools/skill-new.sh <名称> "<描述>" 生成骨架 → 填正文 → bash tools/skill-new.sh --publish <名称>（校验后进共享目录，所有管家下个会话可用）。
+- 技能必备结构：什么时候用 / 前置条件 / 步骤 / 验证 / 坑与注意 / 回滚 / 来源；description ≥ 20 字，写清解决什么问题、什么时候触发。
+- 先查重：bash tools/skills-sync.sh 看共享清单；已有同名或近义技能就改旧的，不新建。
+- 共享机制与验证口径：docs/技能共享机制-20261110.md（主本 /home/j/.openclaw/shared-skills + 配置 skills.load.extraDirs）。
+- 每用一次技能记一次结果：python3 tools/skill-usage.py use <技能> ok|fail "说明"；踩坑当场写回：python3 tools/skill-update.py <技能> "补充内容"（版本 +1，旧版存 shared-skills/.history/）。
+- 20:30 简报出现「▍技能 · 待优化」时当天必须改技能；45 天未使用的技能提退休，重叠技能合并。
+- **自动维护（2026-11-10 主公令）**：`oc-skill-maintain.timer` 每日 21:10 零 token 跑 `tools/skill-maintain.py` —— 镜像主本→副本、给新技能补通用自检、lint 体检、跑 `selftest.sh` 实测、只报新增问题（周日附周报）。技能目录放 `selftest.sh`（rc=0 才算真能用，≤45 秒），未覆盖的每周补 2 个。细则 docs/技能自动维护-20261110.md。
 
 ## 自有队列上限（2026-11-10 主公问询后立 · 硬性）
 - 我的未结任务**上限 6 条**（pending + in_progress）。要新增，先关掉/合并/冻结一条，不许把队列越排越长。

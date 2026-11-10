@@ -167,6 +167,40 @@ def build(slot):
         except Exception:
             pass
 
+    # 技能自优化（2026-11-10 主公令：用完就记、踩坑就改、定期收敛）
+    try:
+        import subprocess as _sp
+        _o = _sp.run(['python3', '/home/j/.openclaw/workspace/tools/skill-usage.py', 'report'],
+                     capture_output=True, text=True, timeout=25).stdout
+        _todo = [x.strip()[2:] for x in _o.splitlines() if x.strip().startswith('- ')]
+        if _todo:
+            L.append(chr(10) + '▍技能')
+            L.append('· 待优化 %d 个：%s' % (len(_todo), '；'.join(_todo[:3])))
+        try:
+            import json as _json
+            _oj = _sp.run(['python3', '/home/j/.openclaw/workspace/tools/skill-audit.py', '--json'],
+                          capture_output=True, text=True, timeout=25).stdout
+            _a = _json.loads(_oj)
+            _r = _a.get('retire') or []
+            _d = _a.get('drift') or []
+            if _r or _d:
+                L.append(chr(10) + '▍技能库')
+                if _r:
+                    L.append('· 45 天未用待退休 %d 个：%s' % (
+                        len(_r), '、'.join(x['skill'] for x in _r[:5])))
+                if _d:
+                    L.append('· 共享主本与加载副本不一致 %d 个' % len(_d))
+            _h = _json.load(open('/home/j/.openclaw/workspace/state/skills/health.json', encoding='utf-8'))
+            if _h.get('selftest_failed') or _h.get('lint_errors'):
+                L.append(chr(10) + '▍技能库')
+                L.append('· 自检失败 %d ｜ lint 硬错 %d（最近一次 %s）' % (
+                    _h.get('selftest_failed', 0), _h.get('lint_errors', 0),
+                    ('' + _h.get('ts', ''))[:16]))
+        except Exception:
+            pass
+    except Exception:
+        pass
+
     # 五大管家
     L.append("\n▍五大管家")
     for aid, cn in BUTLERS:

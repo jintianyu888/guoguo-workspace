@@ -114,3 +114,4 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 - 自有队列上限（2026-11-10 主公问询后立硬性）：我的未结任务 ≤6 条，新增必先减；等主公/周期性/未来架构债/已降级四类不进账本（用 paused 或 docs 备查）；3 天内不会动手的不许留在 pending。当天从 17 条收到 3 条活跃（其余 11 冻结、2 合并撤销）
 - GitHub 私有仓（2026-11-10 通）：jintianyu888/guoguo-workspace，本地仓 /home/j/openclaw-git/guoguo，鉴权用专用部署密钥 ~/.ssh/id_ed25519_github（git@ 远端走 SSH，只有 https 才用 GH_TOKEN）；同步脚本 tools/github-sync.sh --push，每日 23:20 定时器 oc-github-sync.timer 自动跑；只含 tools/docs/panel/根配置，不含 state/数据库/密钥
 - 统一账本（2026-11-10 主公令）：每件事都入账。四层=任务账本 state/tasks/tasks.db｜工作日志 state/log/worklog.jsonl（tools/worklog.py add 类别 对象 结果 evidence= rollback= task=，带哈希链）｜领域账本｜说明文档 docs/。日报 docs/工作日志-YYYY-MM.md 由账本重渲染禁手改，每日 23:20 随 git 进仓。细则 docs/统一账本与记录规则-20261110.md
+- 技能沉淀（2026-11-10 主公令）：每做成功一件事就沉淀成技能；tools/skill-new.sh 生成→--publish 发布到 /home/j/.openclaw/shared-skills（配置 skills.load.extraDirs 让 33 个管家共享，软链会被安全边界跳过）。先 bash tools/skills-sync.sh 查重。细则 docs/技能共享机制-20261110.md

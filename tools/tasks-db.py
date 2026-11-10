@@ -203,7 +203,7 @@ def cmd_add(args):
     for a in args[2:]:
         if '=' in a:
             k,val=a.split('=',1)
-            k={'status':'status','group':'grp','prio':'prio','kind':'kind','verify':'verify','note':'note'}[k]
+            k={'status':'status','group':'grp','grp':'grp','prio':'prio','kind':'kind','verify':'verify','note':'note','notes':'note'}[k]
             kv[k]=val
     c=conn(); nows=now()
     c.execute('INSERT OR REPLACE INTO tasks(no,title,status,kind,grp,prio,notes,verify,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?)',

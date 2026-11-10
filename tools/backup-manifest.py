@@ -5,7 +5,33 @@ import os, sys, json, hashlib, time, argparse
 
 CACHE_DIRS = ["/home/j/.openclaw/workspace/state/backups-hash"]
 
+def sha256_dd(p):
+    # 9p/drvfs 上大文件 open/read 会 ENOMEM（2026-11-10 实测 117G 归档），退回 dd 流式
+    import subprocess
+    try:
+        p1 = subprocess.Popen(['dd', 'if=' + p, 'bs=16M'], stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL)
+        p2 = subprocess.Popen(['sha256sum'], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        out = p2.communicate()[0].decode().split()
+        return out[0] if out and len(out[0]) == 64 else None
+    except Exception:
+        return None
+
+
 def sha256(p, bs=4*1024*1024):
+    try:
+        return _sha256_file(p, bs)
+    except (MemoryError, OSError) as e:
+        if isinstance(e, OSError) and getattr(e, 'errno', None) != 12:
+            raise
+        v = sha256_dd(p)
+        if v:
+            return v
+        raise
+
+
+def _sha256_file(p, bs=4*1024*1024):
     h = hashlib.sha256()
     with open(p, "rb") as f:
         while True:
