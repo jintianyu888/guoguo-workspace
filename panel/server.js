@@ -1435,18 +1435,23 @@ async function fetchBalances() {
   BAL = addExtras(out); BAL_AT = now; BAL_ERR = null;
 }
 
+let LAST_REQ_AT = 0;  // 面板最近一次被访问的时间（缓存节流用）
 async function refreshAll() {
   fetchBalances().catch(() => {});
   Promise.resolve(refreshHost(25000)).catch(function(){});
   Promise.resolve(refreshWeather(600000)).catch(function(){});
   Promise.resolve(refreshStocks(60000)).catch(function(){});
   Promise.resolve(refreshFx(60000)).catch(function(){});
-  await Promise.all([
-    refresh('cron', ['cron', 'list', '--json'], 12000),
-    refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 20000),
-    refresh('status', ['status', '--json'], 20000),
-    refresh('agents', ['agents', 'list', '--json'], 300000)
-  ]);
+  // 2026-11-10：这三个 CLI 调用每次都会让 OpenClaw 复制一份 145MB 的状态库到 ~/.cache/openclaw
+  // （实测 3 个/15 秒 ≈ 16GB/小时，vhdx 膨胀元凶）。没人看面板时完全不必跑。
+  if (Date.now() - LAST_REQ_AT < 90000) {   // 只在面板确实被访问时才拉 CLI
+    await Promise.all([
+      refresh('cron', ['cron', 'list', '--json'], 300000),
+      refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 300000),
+      refresh('status', ['status', '--json'], 300000),
+      refresh('agents', ['agents', 'list', '--json'], 300000)
+    ]);
+  }
 }
 
 const LEDGER_FILE = '/home/j/.openclaw/workspace/state/tasks/tasks.json';
@@ -1745,7 +1750,7 @@ function renderGv() {
     var n = ORDER[i], x = (d.domains || {})[n];
     if (!x) continue;
     var lv = x.level || 'unknown';
-    h += '<i title="' + String(x.source || '').replace(/"/g, '&quot;') + '"><span class="dt" style="background:' +
+    h += '<i title="' + (String(x.headline || '') + ' · ' + String(x.source || '')).replace(/"/g, '&quot;') + '"><span class="dt" style="background:' +
       (COLOR[lv] || COLOR.unknown) + '"></span>' + n + ' ' + String(x.headline || WORD[lv] || '') + '</i>';
   }
   return '<a class="gvt" href="/overview.html" target="_blank" title="打开上帝视角全屏页">上帝视角 <span class="gvv" style="color:' +
@@ -1754,6 +1759,7 @@ function renderGv() {
 }
 
 const server = http.createServer(async (req, res) => {
+  LAST_REQ_AT = Date.now();
   if (!ipAllowed(req.socket && req.socket.remoteAddress)) {
     const who = (req.socket && req.socket.remoteAddress) || '?';
     try { fs.appendFileSync('/home/j/.openclaw/workspace/state/desktop-console/panel-deny.log', new Date().toISOString() + ' deny ' + who + ' ' + req.url + '\n'); } catch (e) {}

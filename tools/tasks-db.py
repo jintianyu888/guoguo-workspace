@@ -174,7 +174,9 @@ def cmd_set(args):
     for kv in args[1:]:
         if '=' not in kv: continue
         k,v=kv.split('=',1)
-        col={'status':'status','prio':'prio','verify':'verify','note':'notes','group':'grp'}.get(k)
+        col={'status':'status','prio':'prio','verify':'verify','note':'notes','group':'grp',
+             'due_plan':'due_plan','eta_min':'eta_min','wait_user':'wait_user','agent':'agent',
+             'slip_reason':'slip_reason','pin_time':'pin_time','blocked':'blocked'}.get(k)
         if not col: continue
         if k=='note':
             cur=c.execute('SELECT notes FROM tasks WHERE no=?',(no,)).fetchone()['notes'] or ''

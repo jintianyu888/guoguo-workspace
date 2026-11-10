@@ -39,6 +39,7 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 - GPU：**/usr/lib/wsl/lib/nvidia-smi（不在 PATH，脚本一律用绝对路径）**；venv：tts312（musicgen）、face（insightface+onnxruntime-gpu）、demucs（分轨，半装）。
 - HF 下载必须：HF_ENDPOINT=https://hf-mirror.com HF_HUB_DISABLE_XET=1
 - 9p(/mnt/e)：慢、吞输出、chmod 无效；大文件禁 cp，用 rsync --append-verify --inplace。
+- vhdx 膨胀根因（2026-11-10 查实并已处置）：OpenClaw 每次「只读打开状态库」（agent 回合、`openclaw status/cron list/sessions` 等 CLI）都会把 ~145MB 的 session 库整份复制到缓存目录且不自动删；面板每 15s 三连 CLI 只是其中一部分（A/B：停面板 3 分钟 +5 份，开面板 +10 份）。处置：`~/.cache/openclaw` 已软链到 `/dev/shm/oc-cache`（tmpfs，纯内存），`tools/oc-cache-janitor.sh` + `oc-cache-janitor.timer`（每 10 分钟，上限 4G，开机 30s 后跑一次）保证用完即销毁 → 不再写盘、vhdx 不再涨。剩余：vhdx 已涨到 967G 需一次性 `sudo fstrim -av` + Windows `wsl --shutdown` 后 `diskpart compact vdisk`；fstrim.timer 此前从未真跑过。
 - 长任务：systemd-run --user --unit=X --collect（网关 cron 有 600s 硬墙）。
 - 搜索/抓取：tools/ds-tools.sh search|fetch。
 - 看板：tools/dashboard-gen.py → 静态 HTML；dashboard-serve.py 127.0.0.1:18810（每次请求重生成）。
@@ -81,6 +82,7 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 12. **WAL 不 checkpoint 会撑爆整个 SQLite worker 池**：lcm.db WAL 曾达 762MB。
 13. **一次性 poke 不算保活**，且探活脚本会成为「最后会话」触发 logind 关机；探活前先 `pgrep -fx` 确认保活进程在，不在先拉起。
 14. **关键计划任务只有 logon 触发器＝被杀后永不复活**：必须 boot trigger + RestartCount/RestartInterval + IgnoreNew，改完 `Get-ScheduledTask` 回读。
+15. **~\.cache/openclaw-<uid> 临时目录绝不能软链**（2026-11-10 实测）：fs-safe 报 `Unsafe fallback OpenClaw temp dir ... is a symbolic link`，整个 openclaw CLI 静默全挂（status/cron/memory 全废，cron「模型时段」连带失败）。只有 `~/.cache/openclaw`（快照缓存）可以软链到 tmpfs。详见 state/work/vhdx-膨胀修复-20261110.md v3。
 
 ## 8. 常用文件
 - 任务账本 state/tasks/tasks.json（唯一真源；kind=decision 即待拍板）。
@@ -107,3 +109,6 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 全文：state/briefs/butler-weekly-2026-W45.md
 <!-- BUTLER-DIGEST:END -->
 - 主公手册（2026-11-10 立）：docs/主公手册-20261110.md，调用 `bash tools/manual.sh [list|节号|关键词]`；工作模式=完成即顺延（plan-reflow 1 分钟间隔）
+- 体积体检（2026-11-10 立，主公令）：每次体检必带体积/文件扫描。tools/space-audit.py（零 token/只读/1.5s，落 state/disk/latest.json + history.jsonl），已挂 20:30 简报「▍体积」与每日 03:47 四盘清理尾部；判定线 P0 盘≥90%、P1 盘≥85%/回收站≥100G/残包≥10G/膨胀≥125%。规则 docs/体积体检与空间清理-20261110.md
+- 保留回收站清理（2026-11-10 主公批准 #972）：tools/archive-trash-purge.py 只删 openclaw-backups/_trash 内满 7 天、且有 ≥2 份同尺寸副本的归档，默认空跑、--apply 才删；主公 2026-11-10 18:20 令：超过 7 天的存档一律无用，可删最后一份（--allow-last-copy），每日任务已带该开关，台账 state/backup/archive-purge-ledger.jsonl；已挂每日 03:47，当日两次共实删 20 份，释放 1306G
+- 自有队列上限（2026-11-10 主公问询后立硬性）：我的未结任务 ≤6 条，新增必先减；等主公/周期性/未来架构债/已降级四类不进账本（用 paused 或 docs 备查）；3 天内不会动手的不许留在 pending。当天从 17 条收到 3 条活跃（其余 11 冻结、2 合并撤销）

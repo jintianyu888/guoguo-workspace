@@ -147,5 +147,9 @@ say ""
 say "== 合计：处理 $COUNT 项，$(human $TOTAL)，跳过占用 $SKIP，拒绝 $REJECT，实删 $DELETED（DRY=$DRY） =="
 for d in d e h x; do say "   盘 $d: 已用 $(used_pct $d)"; done
 timeout 30 sh $W/tools/notify.sh "🧹 磁盘统一清理(DRY=$DRY)：处理 $COUNT 项，约 $(human $TOTAL)，实删 $DELETED" >/dev/null 2>&1 || true
+# 2026-11-10 体积体检：清理后记一次（只读，不改任何文件，失败不影响清理结论）
+timeout 180 /usr/bin/python3 "$W/tools/space-audit.py" >/dev/null 2>&1 || true
+# 2026-11-10 主公批准 #972：保留回收站到期归档清理（>=7 天 + >=2 同尺寸副本 + 至少留 1 份）
+timeout 600 /usr/bin/python3 "$W/tools/archive-trash-purge.py" --apply --allow-last-copy --min-days=7 >>"$W/state/backup/archive-purge.log" 2>&1 || true
 flock -u 9; exec 9>&-
 exit 0

@@ -143,6 +143,18 @@ def build(slot):
     elif op:
         L.append("· 在办 %d 项（#%s）" % (len(op), "、".join(str(r["no"]) for r in op[:6])))
 
+    # 体积体检（2026-11-10 主公令：体检必须带体积/文件扫描）
+    if slot == "evening":
+        try:
+            import subprocess as _sp
+            _o = _sp.run(["python3", os.path.join(WS, "tools/space-audit.py"), "--line"],
+                         capture_output=True, text=True, timeout=180).stdout.strip()
+            if _o:
+                L.append("\n▍体积")
+                L.append("· " + _o)
+        except Exception:
+            pass
+
     # 五大管家
     L.append("\n▍五大管家")
     for aid, cn in BUTLERS:

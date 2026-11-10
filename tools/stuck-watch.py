@@ -9,6 +9,10 @@
   2) 管家空转：该管家 cron 任务最近 3 小时无成功回执，且工作区 3 小时无文件变化
   3) 任务失败：最近 6 小时 lastRunStatus!=ok 且未被网关重启打断
   4) 队列堵塞：同日 overdue ≥5 件 → 直接报「优先级重排」而不是逐条催
+
+变更:
+  2026-11-10 overdue 按 agent 分流：overdue_mine 只含 agent=main；其他管家进 overdue_butlers（只报不派），
+             等主公的进 overdue_owner。原因：#954(hermess) 曾混进 mine，自派工去挑不属于自己的活。
 """
 import os, sys, json, time, sqlite3, datetime, glob
 
@@ -20,7 +24,7 @@ def now(): return datetime.datetime.now()
 
 def tasks_overdue():
     c = sqlite3.connect(os.path.join(W, 'state/tasks/tasks.db')); c.row_factory = sqlite3.Row
-    rows = c.execute("select no,title,status,due_plan,eta_min,wait_user from tasks where status in ('pending','in_progress','open')").fetchall()
+    rows = c.execute("select no,title,status,due_plan,eta_min,wait_user,agent from tasks where status in ('pending','in_progress','open')").fetchall()
     late = []
     for r in rows:
         dp = (r['due_plan'] or '').strip()
@@ -33,7 +37,8 @@ def tasks_overdue():
         mins = (now() - t).total_seconds() / 60.0
         if mins > GRACE_MIN:
             late.append({'no': r['no'], 'title': r['title'][:60], 'due': dp,
-                         'late_min': int(mins), 'wait_user': r['wait_user'], 'status': r['status']})
+                         'late_min': int(mins), 'wait_user': r['wait_user'], 'status': r['status'],
+                         'agent': (r['agent'] or 'main')})
     late.sort(key=lambda x: -x['late_min'])
     return late
 
@@ -69,10 +74,14 @@ def main():
     late = tasks_overdue()
     idle = butler_idle()
     ch = cron_state()
-    mine = [x for x in late if not x['wait_user']]
+    # 归属分流（2026-11-10 修）：只有 agent=main 的才算「我这边」，其他管家的过期单独计数，
+    # 否则 hermess/maint 等管家的任务会挤进 overdue_mine，自派工去挑根本不属于它的活。
+    mine = [x for x in late if not x['wait_user'] and x['agent'] == 'main']
     owner = [x for x in late if x['wait_user']]
+    butler_overdue = [x for x in late if not x['wait_user'] and x['agent'] != 'main']
     res = {'ts': now().strftime('%Y-%m-%d %H:%M:%S'), 'grace_min': GRACE_MIN,
-           'overdue_mine': mine, 'overdue_owner': owner, 'idle_butlers': idle,
+           'overdue_mine': mine, 'overdue_owner': owner, 'overdue_butlers': butler_overdue,
+           'idle_butlers': idle,
            'cron_health': ch}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(res, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
@@ -86,6 +95,9 @@ def main():
         msgs.append('⏳ 等你拍板 %d 件（%s）' % (len(owner), '、'.join('#%s' % x['no'] for x in owner[:5])))
     if idle:
         msgs.append('💤 可能空转：' + '、'.join('%s(%sh)' % (i['butler'], i['idle_h']) for i in idle[:6]))
+    if butler_overdue:
+        msgs.append('🔧 其他管家过期 %d 件（%s），不归我做，只报不派' % (
+            len(butler_overdue), '、'.join('#%s(%s)' % (x['no'], x['agent']) for x in butler_overdue[:5])))
     if not msgs:
         msgs.append('✅ 无过期、无空转（宽限 %d 分钟）' % GRACE_MIN)
     print('\n'.join(msgs))

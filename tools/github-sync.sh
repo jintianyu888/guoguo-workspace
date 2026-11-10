@@ -55,18 +55,28 @@ log "commit $SHA files=$CNT size=$SIZE"
 
 [ "$MODE" = "--push" ] || exit 0
 
-# —— 3) 推送（token 从 600 权限文件读，绝不回显）——
-[ -f "$ENVF" ] || { echo "⚠️ 缺少 $ENVF（含 GH_TOKEN），暂不推送"; log "no-token"; exit 0; }
-# shellcheck disable=SC1090
-. "$ENVF"
-: "${GH_TOKEN:?}"
+# --- 3) 推送：git@ 远端走部署密钥，https 远端走 GH_TOKEN ---
 REMOTE=${GH_REMOTE:-origin}
-if ! git remote get-url "$REMOTE" >/dev/null 2>&1; then
-  echo "⚠️ 未配置远端 $REMOTE，跳过推送"; log "no-remote"; exit 0
-fi
-if git -c credential.helper='!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push -q "$REMOTE" HEAD:main 2>>"$LOG"; then
-  echo "✅ 已推送 $SHA → $REMOTE"
+URLV=$(git remote get-url "$REMOTE" 2>/dev/null || echo "")
+push_ok=0
+case "$URLV" in
+  git@*)
+    GIT_SSH_COMMAND='ssh -i /home/j/.ssh/id_ed25519_github -o IdentitiesOnly=yes' git push -q "$REMOTE" HEAD:main 2>>"$LOG" && push_ok=1 ;;
+  *)
+    if [ -f "$ENVF" ]; then
+      set +u
+      . "$ENVF" 2>/dev/null || true
+      if [ -n "$GH_TOKEN" ]; then
+        git -c credential.helper='!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f' push -q "$REMOTE" HEAD:main 2>>"$LOG" && push_ok=1
+      fi
+      set -u
+    fi ;;
+esac
+if [ "$push_ok" = "1" ]; then
+  echo "推送成功 $SHA -> $REMOTE"
   log "pushed $SHA"
 else
-  echo "❌ 推送失败，详见 $LOG"; log "push-failed $SHA"; exit 1
+  echo "推送失败（远端 $URLV），详见 $LOG"
+  log "push-failed $SHA url=$URLV"
+  exit 1
 fi

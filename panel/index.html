@@ -863,7 +863,6 @@ h2 #errreport.rbtn.ttlbtn{width:auto;min-width:50px;padding:0 7px;font-size:11px
 </head>
 <body>
 <div class="wrap">
-<div class="gv" id="gv"><!--GV--></div>
   <header data-swapgroup="header">
     <div class="hcard hl" data-swap="stocks">
       <div class="stkstime" id="stkstime"></div>
@@ -2991,45 +2990,5 @@ renderClock();
     <pre class="opsout" id="opsout">选择上方任一运维动作…</pre>
   </div>
 </div>
-<style>
-.gv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:7px 12px;background:#181b22;border:1px solid #252a33;border-radius:10px;font-size:12.5px}
-.gv .gvt{color:#e6e9ef;text-decoration:none;font-weight:600}
-.gv .gvt:hover{text-decoration:underline}
-.gv .gvv{font-weight:600;margin-left:2px}
-.gv .gvd{display:flex;gap:10px;flex-wrap:wrap;color:#8b94a3}
-.gv .gvd i{font-style:normal;display:inline-flex;align-items:center;gap:4px}
-.gv .dt{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
-.gv .gvt-ts{margin-left:auto;color:#5f6875;font-size:11px}
-</style>
-<script>
-(function(){
-  function esc(s){return String(s==null?'':s).replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];});}
-  var WORD={ok:'正常',warn:'需注意',bad:'异常',unknown:'未采集'};
-  var DOTC={ok:'#35c97a',warn:'#f2b73d',bad:'#f2545b',unknown:'#7a8494'};
-  var ORDER=['服务','任务','资金','存储','安防','模型'];
-  function paint(d){
-    var s=d.summary||{},v=document.getElementById('gv-v');
-    if(v){v.textContent=(s.verdict==='ok'?'全部正常':s.verdict==='warn'?'需注意':'异常');v.style.color=s.verdict==='ok'?'#35c97a':s.verdict==='warn'?'#f2b73d':'#f2545b';}
-    var box=document.getElementById('gv-d');
-    if(box){var h='';for(var i=0;i<ORDER.length;i++){var n=ORDER[i],x=(d.domains||{})[n];if(!x)continue;
-      var lv=x.level||'unknown';
-      h+='<i title="'+esc(x.source||'')+'"><span class="dt" style="background:'+(DOTC[lv]||DOTC.unknown)+'"></span>'+n+' '+esc(x.headline||WORD[lv]||'')+'</i>';}box.innerHTML=h;}
-    var ts=document.getElementById('gv-ts');if(ts&&d.generated_at)ts.textContent='采集 '+d.generated_at;
-  }
-  function load(){
-    // 用 <script> 引数据，不依赖 fetch（面板内 fetch 曾有挂起问题）
-    var old=document.getElementById('gv-src');
-    if(old&&old.parentNode) old.parentNode.removeChild(old);
-    var s=document.createElement('script');
-    s.id='gv-src'; s.src='/overview-data.js?t='+Date.now();
-    s.onload=function(){ try{ if(window.__GV) paint(window.__GV); }catch(e){} };
-    s.onerror=function(){ var ts0=document.getElementById('gv-ts'); if(ts0) ts0.textContent='数据文件加载失败'; };
-    document.body.appendChild(s);
-  }
-  // 先放一个占位 script，首帧就尽量显示
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
-  setInterval(load,120000);
-})();
-</script>
 </body>
 </html>
