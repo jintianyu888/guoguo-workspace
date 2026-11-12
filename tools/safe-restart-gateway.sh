@@ -62,6 +62,16 @@ if [ "$FORCE" = "0" ] && { [ "$HH" = "04" ] || [ "$HH" = "05" ]; }; then FAIL="$
 if [ "$FORCE" = "0" ] && pgrep -f "backup-(tier1-critical|archive|mirror-verify)|backup-with-quiet" >/dev/null 2>&1; then FAIL="$FAIL backup_running"; fi
 if [ "$FORCE" = "0" ] && upgrade_running; then FAIL="$FAIL upgrade_running"; fi
 if [ "$FORCE" = "0" ] && [ -f "$W/state/work/.watchdog-pause" ]; then FAIL="$FAIL maintenance_pause"; fi
+# 2026-11-12 决策组 D-20261112-002 条件落地：TMPDIR 指向 /dev/shm/oc-tmp，
+#   tmpfs 写满是硬失败，故重启前必须确认：容量够、目录在、可写。
+#   任一不达标即放弃本次重启（沿用失败即取消的既有语义）。
+SHM_AVAIL_M=$(df -m --output=avail /dev/shm 2>/dev/null | tail -1 | tr -dc '0-9')
+if [ -z "${SHM_AVAIL_M:-}" ] || [ "${SHM_AVAIL_M:-0}" -lt 8192 ]; then FAIL="$FAIL shm_too_small(${SHM_AVAIL_M:-0}M)"; fi
+if [ ! -d /dev/shm/oc-tmp ]; then FAIL="$FAIL shm_tmpdir_missing"; fi
+if [ -d /dev/shm/oc-tmp ]; then
+  probe="/dev/shm/oc-tmp/.preflight-$$"
+  if ! ( : > "$probe" ) 2>/dev/null; then FAIL="$FAIL shm_not_writable"; else rm -f "$probe"; fi
+fi
 OLD_PID=$(pid_of)
 log "体检: config=[$VAL] old_pid=${OLD_PID:-none} failed=[${FAIL:-无}]"
 if [ -n "$FAIL" ]; then

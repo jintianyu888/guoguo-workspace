@@ -277,8 +277,12 @@ function runHost() {
 const HM_FAST = '/mnt/c/Users/J/AppData/Local/Temp/hm-fast.json';
 const FAST_PS = process.env.INFOWIN_PS1_FAST || '\\\\wsl.localhost\\Ubuntu\\home\\j\\openclaw-workspaces\\work\\果果助手\\host-metrics-loop.ps1';
 let fastProc = null;
-function startFastSampler() {
-  try { const st = fs.statSync(HM_FAST); if (Date.now() - st.mtimeMs < 5000) return; } catch (e) {}
+let FAST_CHECK_AT = 0;
+async function startFastSampler() {
+  const nowC = Date.now();
+  if (nowC - FAST_CHECK_AT < 5000) return;
+  FAST_CHECK_AT = nowC;
+  try { const st = await fs.promises.stat(HM_FAST); if (Date.now() - st.mtimeMs < 5000) return; } catch (e) {}
   if (fastProc) return;
   try {
     let ffd = 'ignore';
@@ -289,9 +293,19 @@ function startFastSampler() {
     fastProc.unref();
   } catch (e) { fastProc = null; }
 }
-function readFast() {
-  try { return JSON.parse(fs.readFileSync(HM_FAST, 'utf8')); } catch (e) { return null; }
+let FAST_READING = false, FAST_LAST_PULL = 0;
+async function pullFast() {
+  const now = Date.now();
+  if (FAST_READING || now - FAST_LAST_PULL < 1000) return;
+  FAST_LAST_PULL = now; FAST_READING = true;
+  try {
+    const txt = await fs.promises.readFile(HM_FAST, 'utf8');
+    const d = JSON.parse(txt);
+    if (d && d.t) { FAST = d; applyFast(d); CACHE.hostAt = Date.now(); }
+  } catch (e) {}
+  FAST_READING = false;
 }
+function readFast() { return FAST; }
 let FAST = null;
 function applyFast(d) {
   const hh = CACHE.host;
@@ -1639,7 +1653,9 @@ function healthSample(){
       const b = { on: false, seen: 0 };
       try {
         const ns = (JSON.parse(so) || {}).nodes || [];
-        if (ns[0]) { b.on = !!ns[0].connected; b.seen = ns[0].connected ? t : (ns[0].lastSeenAtMs || ns[0].lastConnectedAtMs || 0);
+        if (ns.length) {
+          const nb = ns.find(n => /mypc|b机/i.test(String(n.displayName || ''))) || ns[0];
+          b.on = !!nb.connected; b.seen = nb.connected ? t : (nb.lastSeenAtMs || nb.lastConnectedAtMs || 0);
           const prevSelf = (NODES_CACHE && NODES_CACHE.data && NODES_CACHE.data.self) || {};
           NODES_CACHE = { t: Date.now(), data: { ok: !e, ts: Date.now(), nodes: ns, self: prevSelf } };
         }
@@ -1653,6 +1669,11 @@ function healthSample(){
 }
 healthSample();
 setInterval(healthSample, 60000);
+let HEALTH_SUM_C = { t: 0, body: null };
+let NODES_REFRESHING = false;
+let UPG_STATE = { t: 0, body: null, busy: false };
+let PRESENCE = { on: true, at: 0, src: '', ttl: 120000 };
+let LOGTAIL_C = { t: 0, lines: [] };
 const OPS_SPEC = {
   'oc-status':      { label: 'OC总览',    arg: 'oc-status',      ms: 60000  },
   'oc-health':      { label: 'OC健康',    arg: 'oc-health',      ms: 30000  },
@@ -1758,7 +1779,10 @@ function renderGv() {
     String(d.generated_at || '-') + '</span>';
 }
 
+let SLOW_LOG = [];
 const server = http.createServer(async (req, res) => {
+  const _t0 = Date.now();
+  res.on('finish', () => { const d = Date.now() - _t0; if (d > 2000) { SLOW_LOG.push({ p: req.url, ms: d, t: Date.now() }); if (SLOW_LOG.length > 20) SLOW_LOG.shift(); } });
   LAST_REQ_AT = Date.now();
   if (!ipAllowed(req.socket && req.socket.remoteAddress)) {
     const who = (req.socket && req.socket.remoteAddress) || '?';
@@ -1965,6 +1989,21 @@ const server = http.createServer(async (req, res) => {
 
   // ===== 健康总览：A机/OC/B机 + 24h 稳定性 =====
   if (url.pathname === '/api/health-summary') {
+    const now0 = Date.now();
+    if (HEALTH_SUM_C && now0 - HEALTH_SUM_C.t < 3000) { res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(HEALTH_SUM_C.body); return; }
+    if (!NODES_REFRESHING && (!NODES_CACHE || !NODES_CACHE.data || Date.now() - NODES_CACHE.t > 30000)) {
+      NODES_REFRESHING = true;
+      try {
+        execFile(OPENCLAW_BIN, ['nodes', 'status', '--json', '--timeout', '8000'], { timeout: 12000, cwd: '/home/j' }, (e2, so2) => {
+          NODES_REFRESHING = false;
+          try {
+            const ns = (JSON.parse(so2) || {}).nodes || [];
+            const prevSelf = (NODES_CACHE && NODES_CACHE.data && NODES_CACHE.data.self) || {};
+            NODES_CACHE = { t: Date.now(), data: { ok: !e2, ts: Date.now(), nodes: ns, self: prevSelf } };
+          } catch (err) {}
+        });
+      } catch (err) { NODES_REFRESHING = false; }
+    }
     const hh = HEALTH_HIST || [], now = Date.now();
     const day = hh.filter(x => now - x.t <= 24 * 3600 * 1000);
     const last = hh.length ? hh[hh.length - 1] : null;
@@ -1981,17 +2020,25 @@ const server = http.createServer(async (req, res) => {
       b: { on: !!(last && last.b && last.b.on), seen: (last && last.b && last.b.seen) || 0, onlinePct: day.length ? Math.round(100 * bOn / day.length) : null, drops } };
     const osM = require('os');
     const nc = (NODES_CACHE && NODES_CACHE.data) || {};
-    const node0 = (nc.nodes || [])[0] || {};
-    const hst = node0.hostStats || {};
+    const pickN = (re) => (nc.nodes || []).find(n => re.test(String(n.displayName || ''))) || null;
+    const nb = pickN(/mypc|b机/i) || (nc.nodes || [])[0] || null;
+    const ncv = pickN(/c-library|c机/i);
+    const mk = (n) => n ? { name: n.displayName || '', ip: n.remoteIp || '', plat: n.platform || '', ver: n.version || '',
+        memT: (n.hostStats || {}).memoryTotalBytes || 0, memA: (n.hostStats || {}).memoryFreeBytes || 0,
+        diskA: (n.hostStats || {}).diskAvailableBytes || 0, diskT: (n.hostStats || {}).diskTotalBytes || 0,
+        cpu: (n.hostStats || {}).cpuCount || 0, seen: Math.max(n.lastSeenAtMs || 0, (n.hostStats || {}).updatedAtMs || 0), on: !!n.connected } : null;
     let sip = null;
     try { const ni = osM.networkInterfaces(); for (const k of Object.keys(ni)) { if (sip) break; for (const a of ni[k] || []) { if (a.family === 'IPv4' && !a.internal) { sip = a.address; break; } } } } catch (e) {}
     let memT = 0, memA = 0;
     try { const mi = fs.readFileSync('/proc/meminfo', 'utf8'); const gg = (n) => { const m = new RegExp(n + ':\\s+(\\d+) kB').exec(mi); return m ? Number(m[1]) * 1024 : 0; }; memT = gg('MemTotal'); memA = gg('MemAvailable'); } catch (e) {}
-    out.machines = { a: { name: osM.hostname(), ip: sip, memT, memA },
-      b: { name: node0.displayName || '', ip: node0.remoteIp || '', plat: node0.platform || '', ver: node0.version || '',
-        memT: hst.memoryTotalBytes || 0, memA: hst.memoryFreeBytes || 0, diskA: hst.diskAvailableBytes || 0 } };
+    out.machines = { a: { name: osM.hostname() || 'A机', ip: sip || '', plat: 'linux', ver: process.version, memT: memT, memA: memA, diskA: 0 },
+      b: mk(nb), c: mk(ncv) };
+    out.b = { on: !!(nb && nb.connected), seen: nb ? Math.max(nb.lastSeenAtMs || 0, (nb.hostStats || {}).updatedAtMs || 0) : 0, onlinePct: day.length ? Math.round(100 * bOn / day.length) : null, drops: drops };
+    out.c = { on: !!(ncv && ncv.connected), seen: ncv ? Math.max(ncv.lastSeenAtMs || 0, (ncv.hostStats || {}).updatedAtMs || 0) : 0 };
+    const body = JSON.stringify(out);
+    HEALTH_SUM_C = (ncv || nb) ? { t: Date.now(), body: body } : { t: 0, body: null };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(out)); return;
+    res.end(body); return;
   }
 
 
@@ -2020,15 +2067,25 @@ function upgradeBlockers(){
 
   if (url.pathname === "/api/upgrade/state") {
     const hdr4 = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
-    const cp = require("child_process");
-    let ver = "";
-    try { ver = cp.execSync("openclaw --version 2>/dev/null | tail -1", {encoding:"utf8", timeout:4000}).trim(); } catch {}
-    let tgt = "";
-    try { const st = JSON.parse(cp.execFileSync("openclaw", ["update","status","--json"], {encoding:"utf8", timeout:8000})); tgt = (st.availability && st.availability.latestVersion) || ""; } catch {}
-    const blk = upgradeBlockers();
-    const running = OPS_BUSY === "upgrade";
-    res.writeHead(200, hdr4);
-    res.end(JSON.stringify({ ok:true, running, blockers: blk, version: ver, target: tgt, canStart: !running && blk.length === 0 }));
+    const c = UPG_STATE;
+    if (c.body && Date.now() - c.t < 60000) { res.writeHead(200, hdr4); res.end(c.body); return; }
+    if (c.busy) { res.writeHead(200, hdr4); res.end(c.body || JSON.stringify({ ok: false, checking: true })); return; }
+    c.busy = true;
+    const done = (ver, tgt) => {
+      c.busy = false; c.t = Date.now();
+      let blk = []; try { blk = upgradeBlockers(); } catch (e) {}
+      const running = OPS_BUSY === "upgrade";
+      c.body = JSON.stringify({ ok: true, running, blockers: blk, version: ver, target: tgt, canStart: !running && blk.length === 0 });
+      res.writeHead(200, hdr4); res.end(c.body);
+    };
+    execFile(OPENCLAW_BIN, ['--version'], { timeout: 4000, cwd: '/home/j' }, (e1, so1) => {
+      const ver = String(so1 || '').trim().split(String.fromCharCode(10)).filter(Boolean).pop() || '';
+      execFile(OPENCLAW_BIN, ['update', 'status', '--json'], { timeout: 8000, cwd: '/home/j' }, (e2, so2) => {
+        let tgt = '';
+        try { const st = JSON.parse(so2); tgt = (st.availability && st.availability.latestVersion) || ''; } catch (err) {}
+        done(ver, tgt);
+      });
+    });
     return;
   }
   if (url.pathname === '/api/ops/start') {
@@ -2249,6 +2306,29 @@ function upgradeBlockers(){
     });
     return;
   }
+  if (url.pathname === '/api/logtail') {
+    const now = Date.now();
+    const reply = (lines) => {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ts: now, lines }));
+    };
+    if (now - LOGTAIL_C.t < 5000 && LOGTAIL_C.lines.length) return reply(LOGTAIL_C.lines);
+    return execFile('journalctl', ['--user', '-u', 'guoguo.service', '-n', '80', '--no-pager', '-o', 'cat'],
+      { timeout: 4000, maxBuffer: 1 << 20 }, (err, out) => {
+        const lines = String(out || '').split('\n').filter((x) => x.trim()).slice(-80);
+        LOGTAIL_C = { t: Date.now(), lines };
+        reply(lines);
+      });
+  }
+  if (url.pathname === '/api/presence') {
+    const onQ = url.searchParams.get('on');
+    if (onQ !== null) {
+      PRESENCE = { on: onQ !== '0', at: Date.now(), src: String(url.searchParams.get('src') || ''), ttl: Math.max(5, Number(url.searchParams.get('ttl') || 120)) * 1000 };
+    }
+    const alive = !!(PRESENCE.at && (Date.now() - PRESENCE.at < (PRESENCE.ttl || 120000)));
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify({ on: alive ? PRESENCE.on : true, known: alive, ts: PRESENCE.at, src: PRESENCE.src }));
+  }
   if (url.pathname === '/health') { res.writeHead(200); return res.end('ok'); }
   let p = url.pathname === '/' ? '/index.html' : url.pathname;
   p = path.join(PUBLIC, path.normalize(p).replace(/^([.][.][/\\])+/, ''));
@@ -2275,13 +2355,17 @@ setInterval(() => { refreshAll().catch(() => {}); }, 15000);
 setInterval(() => { refreshHost(6000).catch(() => {}); }, 8000);
 let loopPrev = Date.now();
 setInterval(() => {
-  startFastSampler(); mergeFast(); sampleOc();
+  const _tA = Date.now();
+  startFastSampler(); pullFast(); sampleOc();
+  const _tickMs = Date.now() - _tA;
   const now = Date.now();
   const lag = Math.max(0, now - loopPrev - 1000);
   loopPrev = now;
   if (CACHE.host) {
     CACHE.host.eventLoopMs = Math.round(lag * 10) / 10;
     CACHE.host.rssMB = Math.round(process.memoryUsage().rss / 1048576);
+    CACHE.host.tickSyncMs = _tickMs;
+    CACHE.host.slow = SLOW_LOG.slice(-5);
   }
 }, 1000);
 startFastSampler();

@@ -115,7 +115,8 @@
   .pill.mdl{background:#16283a;color:#8fb8dc;border:1px solid #274158;font-size:10.5px}
   .todo-wrap{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   .todo-list{flex:1 1 auto;min-height:56px;overflow:auto;padding:4px 10px}
-  .tstack{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:8px;overflow-y:auto}
+  .tstack{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;overflow:hidden}
+  .split[data-swap="todo"]>.panel{max-height:54vh}
   .tstack .tframe.mine{flex:0 0 auto;max-height:none;min-height:0}
   .tstack .tframe.gg{flex:1 1 auto;min-height:0}
   .tstack .tframe.frz{flex:0 0 auto;min-height:0}
@@ -237,7 +238,8 @@
 .opsg.danger .opsg-t{color:#f0a8b4}
 /* v3.6.0 底部四窗对等：日志 | 运维 | 云端模型 | 本地模型 */
 .bottomrow .opsside,.bottomrow .localpanel{flex:1 1 0;width:0;min-width:0}
-.opsside{border-left:none !important;background:var(--panel) !important;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.opsside{border-left:none !important;background:var(--panel) !important;border:1px solid var(--line);border-radius:14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#31475f transparent;display:flex;flex-direction:column}
+.opsside h2.opsside-hd{position:sticky;top:0;z-index:3;background:var(--panel)}
 h2.opsside-hd{margin:0;display:flex;align-items:center;gap:8px;padding:10px 16px !important;font-size:14px !important;font-weight:650 !important;color:#d6e3f2 !important;height:44px;box-sizing:border-box;border-bottom:1px solid var(--line);flex:0 0 44px}
 .opsside-sub{font-size:11px;color:var(--dim);font-weight:400}
 .localpanel .body{padding:8px 12px;overflow:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:0}
@@ -866,9 +868,238 @@ h2 #errreport.rbtn.ttlbtn{width:auto;min-width:50px;padding:0 7px;font-size:11px
 .opsside-hd a.lanip::before{content:"局域网";font-family:inherit;font-size:10px;opacity:.7;margin-right:5px;letter-spacing:0}
 .opsside-hd a.lanip:hover{background:rgba(63,134,189,.28);color:#a9d1f2;border-color:rgba(63,134,189,.6)}
 .opsside-hd a.lanip:active{transform:translateY(1px)}
+
+/* ===== v3.9.96 科幻 HUD 皮肤（默认关闭，点右上 HUD 开启） ===== */
+#hudcanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0;transition:opacity .6s ease}
+.hudscan{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .6s ease;
+  background:repeating-linear-gradient(to bottom,rgba(0,229,255,.055) 0 1px,transparent 1px 4px)}
+body.hud #hudcanvas{opacity:.62}
+body.hud .hudscan{opacity:.5}
+body.hud .wrap{position:relative;z-index:2}
+body.hud{background:
+  radial-gradient(900px 520px at 15% -10%,rgba(0,140,190,.18),transparent 60%),
+  radial-gradient(700px 420px at 110% 110%,rgba(0,90,140,.16),transparent 60%),#050b11}
+body.hud #hudcanvas{opacity:.32;filter:saturate(1.3);z-index:6}
+body.hud{background:
+  repeating-linear-gradient(0deg,rgba(0,229,255,.045) 0 1px,rgba(0,0,0,0) 1px 46px),
+  repeating-linear-gradient(90deg,rgba(0,229,255,.045) 0 1px,rgba(0,0,0,0) 1px 46px),
+  radial-gradient(1200px 700px at 50% -12%,rgba(0,130,180,.30),rgba(0,0,0,0) 62%),
+  linear-gradient(180deg,#020910,#03121b 58%,#020a12)!important}
+body.hud .panel,body.hud .tframe,body.hud .hcard{
+  clip-path:polygon(0 10px,10px 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 10px),calc(100% - 10px) 100%,16px 100%,0 calc(100% - 16px));
+  border:1px solid rgba(0,229,255,.34)!important;
+  background:linear-gradient(180deg,rgba(6,26,38,.88),rgba(4,16,24,.92))!important;
+  box-shadow:0 0 22px rgba(0,180,220,.18),0 0 0 1px rgba(0,229,255,.08) inset}
+body.hud .panel h2:before{content:"▌";color:#00e5ff;margin-right:7px;text-shadow:0 0 9px #00e5ff}
+body.hud .panel h2{font-weight:700;text-transform:uppercase}
+body.hud .num,body.hud .tno,body.hud #clock,body.hud .balrow b{
+  font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;text-shadow:0 0 9px rgba(0,229,255,.55)}
+body.hud #hudframe{position:fixed;inset:6px;pointer-events:none;z-index:8;opacity:.95;background:
+  linear-gradient(#00e5ff,#00e5ff) left top/30px 2px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) left top/2px 30px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) right top/30px 2px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) right top/2px 30px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) left bottom/30px 2px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) left bottom/2px 30px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) right bottom/30px 2px no-repeat,
+  linear-gradient(#00e5ff,#00e5ff) right bottom/2px 30px no-repeat;
+  filter:drop-shadow(0 0 6px rgba(0,229,255,.55))}
+body.hud #hudtick{position:fixed;left:0;right:0;bottom:0;height:24px;z-index:8;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,30,45,.0),rgba(0,30,45,.85));border-top:1px solid rgba(0,229,255,.35);
+  overflow:hidden;display:block}
+body.hud #hudtick .tx{position:absolute;white-space:nowrap;will-change:transform;
+  font:12px/24px ui-monospace,Consolas,monospace;color:#7fe4ff;letter-spacing:.14em;
+  text-shadow:0 0 8px rgba(0,229,255,.5);animation:hudmarq 38s linear infinite}
+@keyframes hudmarq{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+#hudframe,#hudtick{display:none}
+body.hud #hudframe{display:block} body.hud #hudtick{display:none}   /* v3.9.120 去掉底部跑马灯，避免压住最后一行 */
+body.hud.hud-idle #hudframe,body.hud.hud-idle #hudtick{opacity:0;transition:opacity .8s}
+/* v3.9.111 顶部指挥条 */
+#hudtop{display:none}
+body.hud #hudtop{display:flex;align-items:center;gap:18px;position:fixed;left:0;right:0;top:0;height:38px;z-index:9;
+  padding:0 16px;pointer-events:none;font-family:ui-monospace,Consolas,monospace;
+  background:linear-gradient(90deg,#04222f,#03161f 60%,#020d14);
+  border-bottom:1px solid rgba(0,229,255,.45);box-shadow:0 6px 22px rgba(0,180,230,.18)}
+body.hud #hudtop b{font-size:12px;letter-spacing:.42em;color:#57d8f5;text-shadow:0 0 10px rgba(0,229,255,.7);font-weight:600}
+body.hud #hudclock{margin-left:auto;font-size:20px;letter-spacing:.16em;color:#eafcff;
+  text-shadow:0 0 12px rgba(0,229,255,.85),0 0 28px rgba(0,150,210,.5)}
+body.hud #hudstat{font-size:11.5px;letter-spacing:.2em;color:#7fe4ff;text-shadow:0 0 9px rgba(0,229,255,.5)}
+body.hud #hudstat{margin-right:62px}
+body.hud .wrap{padding-top:38px;padding-bottom:28px}
+/* v3.9.114 配色统一 + 版式对称 */
+body.hud{--green:#3fe9ff;--yellow:#7ce8ff;--blue:#00cfff;--dim:#6fa6bd;--grey:#4f7f96;
+  --line:#0f3a4d;--panel:#04141d;--bg:#020910;--txt:#e8fbff}
+body.hud .statusgrid .pc{display:grid!important;grid-template-columns:repeat(30,minmax(0,1fr))!important;gap:4px!important;overflow:hidden}
+body.hud .statusgrid .pc .m{height:78px;padding:5px 6px 4px;position:relative;overflow:hidden;
+  border:1px solid rgba(0,229,255,.22);
+  background:
+    linear-gradient(#00e5ff,#00e5ff) left 2px top 2px/6px 1px no-repeat,
+    linear-gradient(#00e5ff,#00e5ff) left 2px top 2px/1px 6px no-repeat,
+    linear-gradient(#00e5ff,#00e5ff) right 2px bottom 2px/6px 1px no-repeat,
+    linear-gradient(#00e5ff,#00e5ff) right 2px bottom 2px/1px 6px no-repeat,
+    linear-gradient(180deg,rgba(0,40,58,.55),rgba(2,10,16,.75))}
+body.hud .statusgrid .pc .m:before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--p,0) * 1%);
+  background:linear-gradient(180deg,rgba(0,229,255,.34),rgba(0,120,180,.10));
+  border-top:1px solid rgba(0,229,255,.75);box-shadow:0 -4px 14px rgba(0,229,255,.35);
+  transition:height .7s ease;pointer-events:none}
+body.hud .statusgrid .pc .m:after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,229,255,.10) 0 1px,rgba(0,0,0,0) 1px 10px);
+  background-size:100% 10px;animation:tilescan var(--ts,4.5s) linear infinite}
+@keyframes tilescan{from{background-position:0 0}to{background-position:0 -10px}}
+/* v3.9.135 大窗再炫：四角括号 + 顶部流光 + 标题渐变 */
+body.hud .main>div,body.hud .bottomrow>div{position:relative}
+body.hud .main>div:before,body.hud .bottomrow>div:before{content:"";position:absolute;inset:3px;pointer-events:none;z-index:3;
+  background:
+    linear-gradient(#4de6ff,#4de6ff) left top/16px 2px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) left top/2px 16px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) right top/16px 2px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) right top/2px 16px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) left bottom/16px 2px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) left bottom/2px 16px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) right bottom/16px 2px no-repeat,
+    linear-gradient(#4de6ff,#4de6ff) right bottom/2px 16px no-repeat;
+  opacity:.55;filter:drop-shadow(0 0 4px rgba(0,229,255,.6))}
+body.hud .main>div:after,body.hud .bottomrow>div:after{content:"";position:absolute;left:0;top:0;height:2px;width:180px;pointer-events:none;z-index:4;
+  background:linear-gradient(90deg,rgba(0,229,255,0),#9df3ff,rgba(0,229,255,0));
+  animation:panelline var(--pt,7.5s) linear infinite;animation-delay:var(--pd,0s);opacity:.9}
+@keyframes panelline{0%{left:-180px;opacity:0}10%{opacity:.95}85%{opacity:.95}100%{left:100%;opacity:0}}
+/* v3.9.136 八大窗统一：同一套外壳 / 标题栏 / 内卡片 / 字色 */
+body.hud .main>div,body.hud .bottomrow>div{
+  padding:7px 9px!important;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(6,20,29,.90),rgba(3,10,16,.95))!important;
+  border:1px solid rgba(0,229,255,.20)!important;
+  box-shadow:inset 0 0 42px rgba(0,150,190,.10),0 0 20px rgba(0,170,210,.10)!important}
+body.hud .main>div>h2,body.hud .bottomrow>div>h2{
+  display:flex;align-items:center;gap:7px;flex:0 0 32px;height:32px;
+  margin:-7px -9px 7px;padding:0 9px;
+  font-size:12.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  background:linear-gradient(90deg,rgba(0,229,255,.16),rgba(0,229,255,.02) 72%,rgba(0,229,255,0));
+  border-bottom:1px solid rgba(0,229,255,.18)}
+body.hud .main>div>h2:before,body.hud .bottomrow>div>h2:before{content:"▌";color:#00e5ff;margin-right:2px;text-shadow:0 0 9px #00e5ff}
+body.hud .main>div>h2 .tag,body.hud .bottomrow>div>h2 .tag,
+body.hud .main>div>h2 .rfbtn,body.hud .bottomrow>div>h2 .rfbtn{margin-left:auto}
+/* v3.9.149 标题栏统一：单行、不换行、字号锁定，防止被挤成两行或压到内容 */
+body.hud .main>div>h2,body.hud .bottomrow>div>h2,
+body.hud .main>div.split>.panel>h2,body.hud .bottomrow>div.split>.panel>h2{
+  white-space:nowrap!important;overflow:hidden!important;line-height:32px}
+body.hud .main>div>h2,body.hud .bottomrow>div>h2{font-size:12.5px!important;height:32px!important;min-height:32px!important}
+body.hud .main>div.split>.panel>h2,body.hud .bottomrow>div.split>.panel>h2{
+  font-size:11px!important;height:26px!important;min-height:26px!important;line-height:26px}
+body.hud .main>div>h2>span,body.hud .bottomrow>div>h2>span,
+body.hud .main>div>h2>button,body.hud .bottomrow>div>h2>button{flex:0 0 auto;white-space:nowrap}
+body.hud .main>div>h2 .rfbtn,body.hud .bottomrow>div>h2 .rfbtn{margin-left:auto}
+body.hud .main>div>h2 .tag,body.hud .bottomrow>div>h2 .tag{
+  font-size:11px;letter-spacing:.06em;color:#9fe4f6;background:rgba(0,229,255,.10);
+  border:1px solid rgba(0,229,255,.25);padding:1px 7px;border-radius:0}
+body.hud .main>div .tframe,body.hud .bottomrow>div .tframe,
+body.hud .main>div .hcard,body.hud .bottomrow>div .hcard,
+body.hud .main>div .card,body.hud .bottomrow>div .card,
+body.hud .main>div .opsg,body.hud .bottomrow>div .opsg,
+body.hud .bottomrow>div .balrow,body.hud .main>div .chips .chip{
+  border:1px solid rgba(0,229,255,.14)!important;background:rgba(2,12,18,.55)!important;border-radius:0!important}
+body.hud .main>div,body.hud .bottomrow>div{font-size:12px;color:#d9f4ff}
+body.hud .main>div .dim,body.hud .bottomrow>div .dim{color:#8fb6c7!important}
+/* 拆分窗内部：子面板降级为分区，不再套一层窗 */
+body.hud .main>div.split>.panel,body.hud .bottomrow>div.split>.panel{
+  background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
+body.hud .main>div.split,body.hud .bottomrow>div.split{gap:9px}
+body.hud .main>div.split>.panel>h2,body.hud .bottomrow>div.split>.panel>h2{
+  display:flex;align-items:center;gap:6px;flex:0 0 26px;height:26px;margin:0 0 5px;padding:0 2px;
+  font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#9fe4f6;
+  -webkit-text-fill-color:#9fe4f6;background:none;border-bottom:1px solid rgba(0,229,255,.12)}
+body.hud .main>div.split>.panel>h2:before,body.hud .bottomrow>div.split>.panel>h2:before{
+  content:"▌";color:#00e5ff;margin-right:2px;text-shadow:0 0 8px #00e5ff}
+body.hud .main>div.split>.panel>h2 .tag,body.hud .bottomrow>div.split>.panel>h2 .tag{
+  margin-left:auto;font-size:10.5px;letter-spacing:.04em;color:#7fd2e6;background:none;border:0;padding:0}
+body.hud .main>div .ok,body.hud .bottomrow>div .ok{color:#86f5e4!important}
+body.hud .panel h2{background:linear-gradient(90deg,#bff3ff,#5fd8f5 70%,#2aa8c8);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+/* v3.9.134 更炫：整条数据光束 + 格子依次呼吸 + 边缘流光 */
+body.hud .statusgrid .pc{position:relative}
+body.hud .statusgrid .pc:after{content:"";position:absolute;top:0;bottom:0;width:170px;pointer-events:none;z-index:5;
+  background:linear-gradient(90deg,rgba(0,229,255,0) 0%,rgba(120,240,255,.28) 45%,rgba(230,255,255,.55) 50%,rgba(120,240,255,.28) 55%,rgba(0,229,255,0) 100%);
+  filter:blur(1px);animation:beam var(--bt,6.5s) linear infinite;mix-blend-mode:screen}
+@keyframes beam{0%{left:-170px;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
+body.hud .statusgrid .pc .m{animation:tilepulse var(--tp,4.2s) ease-in-out infinite;
+  animation-delay:calc(var(--p,50) * -0.045s + var(--td,0s))}
+@keyframes tilepulse{0%,100%{box-shadow:0 0 0 rgba(0,229,255,0)}45%{box-shadow:0 0 14px rgba(0,229,255,.28),0 0 0 1px rgba(0,229,255,.35) inset}}
+body.hud .statusgrid .pc .m .lbl:before{content:"▸ ";color:#25c6e6}
+body.hud .statusgrid .pc .m[data-cls="y"]:before{background:linear-gradient(180deg,rgba(124,232,255,.40),rgba(0,140,190,.12));border-top-color:#9ff0ff}
+body.hud .statusgrid .pc .m[data-cls="r"]:before{background:linear-gradient(180deg,rgba(255,93,108,.42),rgba(120,20,30,.12));border-top-color:#ff8b98;box-shadow:0 -4px 14px rgba(255,93,108,.45)}
+body.hud .statusgrid .pc .m .top{position:relative;z-index:2}
+body.hud .statusgrid .pc .m .lbl{color:#8fe9ff;opacity:.9}
+body.hud .statusgrid .pc .m .val{color:#f2feff;text-shadow:0 0 8px rgba(0,229,255,.9),0 0 18px rgba(0,180,230,.5)}
+body.hud .statusgrid .pc .m[data-cls="r"] .val{color:#ffd7db;text-shadow:0 0 10px rgba(255,93,108,.9)}
+body.hud .statusgrid .pc .m:hover{border-color:#25c6e6;box-shadow:0 0 16px rgba(0,229,255,.35)}
+body.hud .statusgrid .pc .m .lbl{font-size:10px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;color:#a9f2ff}
+body.hud .statusgrid .pc .m .lbl:before,body.hud .statusgrid .pc .m .lbl:after{content:""}
+body.hud .statusgrid .pc .m .val{font-size:17px;line-height:1.15;display:block;margin-top:1px}
+body.hud .statusgrid .pc .m[data-long="1"] .val{font-size:14px!important;letter-spacing:-.02em}
+body.hud .statusgrid .pc .m[data-long="2"] .val{font-size:12.5px!important;letter-spacing:-.03em}
+body.hud .statusgrid .pc .m[data-long="3"] .val{font-size:11px!important;letter-spacing:-.04em}
+body.hud .statusgrid .pc .m .val small{font-size:8px}
+body.hud .statusgrid .pc .m .spark,body.hud .statusgrid .pc .m .sub{display:none}
+body.hud .statusgrid .pc .m .top{display:block}
+body.hud .statusgrid .pc .m{overflow:hidden}
+body.hud .statusgrid .pc .m .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.hud .bottomrow .logpanel{flex:1 1 0;min-width:0;height:var(--winH,420px)!important}
+body.hud .main{row-gap:12px;grid-auto-rows:var(--winH,420px)}
+body.hud .main>div,body.hud .bottomrow>div{min-height:0;overflow:hidden}
+
+body.hud .bottomrow .panel{flex:1 1 0;min-width:0;height:var(--winH,420px)!important}
+body.hud .bottomrow{margin-bottom:26px}
+/* v3.9.110 小块指标（CPU/GPU/内存/磁盘…）炫酷化 */
+body.hud .m{position:relative;padding:6px 8px 5px;border:1px solid rgba(0,229,255,.16);
+  background:linear-gradient(160deg,rgba(0,60,86,.34),rgba(2,12,20,.5));
+  clip-path:polygon(0 6px,6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%)}
+body.hud .m:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:linear-gradient(180deg,#00e5ff,rgba(0,229,255,0));box-shadow:0 0 8px rgba(0,229,255,.8)}
+body.hud .m .lbl{color:#7fe4ff;letter-spacing:.12em;text-transform:uppercase}
+body.hud .m .lbl:before{content:"[";color:rgba(0,229,255,.45);margin-right:4px}
+body.hud .m .lbl:after{content:"]";color:rgba(0,229,255,.45);margin-left:4px}
+body.hud .m .val{font-family:ui-monospace,Consolas,monospace;color:#eafcff;
+  text-shadow:0 0 10px rgba(0,229,255,.75),0 0 22px rgba(0,180,230,.4)}
+body.hud .m .val small{color:#75c9e0;text-shadow:none}
+body.hud .m .sub{font-family:ui-monospace,Consolas,monospace;color:#5f9fb8;letter-spacing:.02em}
+body.hud .m .spark polygon{fill:rgba(0,229,255,.16)!important}
+body.hud .m .spark polyline,body.hud .m .spark path{stroke:#00e5ff!important;
+  stroke-width:1.5!important;filter:drop-shadow(0 0 3px rgba(0,229,255,.85))}
+body.hud .m:after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,229,255,0) 0%,rgba(0,229,255,.10) 50%,rgba(0,229,255,0) 100%);
+  background-size:100% 200%;animation:hudmsweep 5.5s linear infinite;opacity:.7}
+@keyframes hudmsweep{0%{background-position:0 -120%}100%{background-position:0 120%}}
+/* 面板整体再压暗一点、描边更亮 */
+body.hud .panel,body.hud .tframe{background:linear-gradient(180deg,rgba(5,24,35,.78),rgba(2,11,18,.86))!important;
+  border-color:rgba(0,229,255,.45)!important}
+body.hud .panel{position:relative}
+body.hud .panel h2{border-bottom:1px solid rgba(0,229,255,.16);padding-bottom:5px;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.hud::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(0deg,rgba(0,229,255,.05) 0 1px,rgba(0,0,0,0) 1px 3px);opacity:.55;animation:hudscan 7s linear infinite}
+@keyframes hudscan{from{background-position:0 0}to{background-position:0 30px}}
+body.hud .panel,body.hud .tframe,body.hud .hcard{box-shadow:0 0 18px rgba(0,190,230,.10),0 0 0 1px rgba(0,229,255,.07) inset}
+body.hud .panel,body.hud .hcard{background:rgba(7,20,29,.72)!important;border-color:#134454!important;
+  box-shadow:0 0 0 1px rgba(0,229,255,.05) inset,0 0 16px rgba(0,190,230,.07)}
+body.hud .panel h2,body.hud .tframeh,body.hud .panel h2 .tag{color:#8fe9ff;text-shadow:0 0 7px rgba(0,210,255,.5)}
+body.hud .panel h2{letter-spacing:.08em}
+body.hud .gvt,body.hud .opsside-hd{border-bottom-color:#134454!important}
+#hudbtn{display:none!important}
+.hudbtn{margin-left:auto;flex:0 0 auto;border:1px solid #1d4557;background:rgba(0,120,160,.14);color:#7fe4ff;
+  font:600 10.5px/1 ui-monospace,monospace;letter-spacing:.14em;padding:4px 8px;border-radius:6px;cursor:pointer}
+.hudbtn.hudfab{position:fixed;top:10px;right:14px;z-index:99999;margin:0;padding:6px 12px;border-radius:14px;font-size:12px;letter-spacing:.08em;background:rgba(0,120,160,.20);border:1px solid #2b5f78;color:#7fe4ff;cursor:pointer;backdrop-filter:blur(4px);box-shadow:0 0 10px rgba(0,190,230,.18)}
+.hudbtn.hudfab:hover{background:rgba(0,170,210,.34);color:#e6ffff}
+body.hud .hudbtn.hudfab{top:6px;right:12px;background:rgba(0,229,255,.24);border-color:#25c6e6;color:#eaffff;box-shadow:0 0 14px rgba(0,229,255,.45)}
+.hudbtn:hover{background:rgba(0,160,200,.22)}
+body.hud .hudbtn{background:rgba(0,229,255,.22);border-color:#25c6e6;color:#e6ffff;box-shadow:0 0 10px rgba(0,229,255,.35)}
+body.hud .num,body.hud .clock,body.hud #clock{text-shadow:0 0 8px rgba(0,229,255,.45)}
+body.hud-idle .wrap{filter:brightness(.55) saturate(.85);transition:filter 1.2s ease}
+body.hud.hud-idle #hudcanvas{opacity:0}
 </style>
 </head>
-<body>
+<body class="hud">
+<canvas id="hudcanvas"></canvas>
+<div id="hudframe"></div>
+<div id="hudtop"><b>GUOGUO // SYSTEM MONITOR</b><span id="hudclock">--:--:--</span><span id="hudstat">◈ 链路检测中</span></div>
+<div id="hudtick"><div class="tx">SYSTEM ONLINE · 数据链路待刷新</div></div>
+<div class="hudscan" id="hudscan"></div>
 <div class="wrap">
   <header data-swapgroup="header">
     <div class="hcard hl" data-swap="stocks">
@@ -1030,7 +1261,7 @@ h2 #errreport.rbtn.ttlbtn{width:auto;min-width:50px;padding:0 7px;font-size:11px
             </span>
           </div></div>
         </div>
-        <div id="opshealth" style="margin:6px 8px 2px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"></div>
+        <div id="opshealth" style="margin:6px 8px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px"></div>
         <pre class="opsout inline" id="opsoutinline">点分组内按钮执行；结果显示在这里。</pre>
         <div class="termbar" style="display:none" data-retired="v3.9.42"><span class="termtabs"><button class="ttab on" data-ts="1" title="Windows PowerShell（经 WSL 互操作）">PowerShell</button><button class="ttab" data-ts="2" title="Ubuntu / WSL bash 登录 shell">Ubuntu</button><button class="ttab" data-ts="3" title="Windows 命令提示符 cmd.exe">CMD</button></span><span class="termp">$</span><input id="terminput" type="text" spellcheck="false" autocomplete="off" placeholder="在这输入命令，回车执行（记录到 state/work/term-cmd.log）"><button class="opstbtn" id="termsend">执行</button><button class="opstbtn" id="termctrlc" title="发送 Ctrl-C 中断">中断</button><button class="opstbtn" id="termback" title="回到系统运行状态">返回</button><input id="termsecret" type="password" autocomplete="off" spellcheck="false" placeholder="密文输入（不记录/不回显）" style="flex:0 0 150px"><button class="opstbtn" id="termsecsend" title="把密文送入终端并回车（不写日志）">送入</button></div>
   </div>
@@ -1050,38 +1281,55 @@ h2 #errreport.rbtn.ttlbtn{width:auto;min-width:50px;padding:0 7px;font-size:11px
 // ===== 运维台健康总览（A机/OC/B机 三卡，60s，/api/health-summary） =====
 function ohAge(ms){ var s=Math.max(0,Math.floor((Date.now()-ms)/1000)); if(s<60)return s+' 秒前'; if(s<3600)return Math.floor(s/60)+' 分钟前'; if(s<86400)return Math.floor(s/3600)+' 小时前'; return Math.floor(s/86400)+' 天前'; }
 function ohGb(b){ return (b/1073741824).toFixed(1)+'GB'; }
-function ohCard(title,col,lab,l1,l2,l3){
-  return '<div style="background:rgba(56,139,253,.06);border:1px solid #21262d;border-radius:8px;padding:7px 9px;font-size:11px;line-height:1.8">'
-    +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#e6edf3;font-weight:700">'+title+'</span><span style="color:'+col+';font-weight:700">'+lab+'</span></div>'
-    +'<div style="color:#8b949e">'+l1+'</div><div style="color:#8b949e">'+l2+'</div><div style="color:#8b949e">'+l3+'</div></div>';
+function ohCard(title,col,lab,metric,full){
+  var tip = String(full==null?'':full).replace(/"/g,'&quot;');
+  return '<div title="'+tip+'" style="background:rgba(56,139,253,.06);border:1px solid #21262d;border-radius:7px;padding:4px 6px;font-size:10.5px;line-height:1.45;overflow:hidden">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:3px;white-space:nowrap">'
+    +'<span style="color:#e6edf3;font-weight:700">'+title+'</span><span style="color:'+col+';font-weight:700">'+lab+'</span></div>'
+    +'<div style="color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+metric+'</div></div>';
 }
 function renderOpsHealth(d){
   var box=document.getElementById('opshealth'); if(!box) return;
   if(!d){ box.innerHTML='<div style="color:#d29922;font-size:11.5px;padding:4px 8px">健康数据获取失败</div>'; return; }
-  var a=d.a||{},oc=d.oc||{},b=d.b||{},m=d.machines||{},ma=m.a||{},mb=m.b||{};
+  try{ window.__HUDDATA && window.__HUDDATA(d); }catch(e){}
+  try{ window.__HUDTICK && window.__HUDTICK(d); }catch(e){}
+  var a=d.a||{},oc=d.oc||{},b=d.b||{},c=d.c||{},m=d.machines||{},ma=m.a||{},mb=m.b||{},mc=m.c||{};
+  var ohPct=function(x,tot,free){ if(!x||!tot) return null; return Math.round(100*(tot-(free||0))/tot); };
   var aBad=(a.memPct||0)>88||(a.swapPct||0)>70||(a.load||0)>10;
   var aWarn=!aBad&&((a.memPct||0)>75||(a.swapPct||0)>40||(a.load||0)>5);
   var aCol=aBad?'#f85149':(aWarn?'#d29922':'#3fb950'), aLab=aBad?'压力大':(aWarn?'注意':'良好');
   var ocCol=!oc.ok?'#f85149':(oc.degraded||oc.dq>0?'#d29922':'#3fb950');
-  var ocLab=!oc.ok?'异常':(oc.degraded?'事件循环降级':(oc.dq>0?'良好·有死信':'良好'));
+  var ocLab=!oc.ok?'异常':(oc.degraded?'降级':(oc.dq>0?'有死信':'良好'));
   var bCol=b.on?'#3fb950':((d.ts-b.seen)<10*60*1000?'#d29922':'#f85149');
   var bLab=b.on?'在线':((d.ts-b.seen)<10*60*1000?'活跃':'离线');
-  var h=ohCard('A机',aCol,aLab,
-    '● '+esc(ma.name||'本机')+' · linux(WSL2)',
-    '内存压力 '+(a.memPct||0)+'%（峰值 '+(d.aMemPeak||0)+'%）· Swap '+(a.swapPct||0)+'% · 负载 '+(a.load||0).toFixed(2),
-    (ma.ip||'?')+' · 磁盘已用 '+(a.diskPct||0)+'%');
-  h+=ohCard('OC系统',ocCol,ocLab,
-    (oc.degraded?'事件循环降级':'事件循环正常')+' · 延迟 '+(oc.delayMaxMs||0)+'ms',
-    '死信 '+(oc.dq||0)+' · 会话 '+(oc.sessions||0)+' · 通道 '+(oc.channels||0),
-    '24h 正常率 '+(oc.okPct||0)+'%');
-  h+=ohCard('B机',bCol,bLab,
-    '● '+esc(mb.name||'—')+(mb.plat?(' · '+mb.plat):''),
-    '心跳 '+(b.seen?ohAge(b.seen):'—')+(mb.memT?(' · 内存 '+ohGb(mb.memA)+'/'+ohGb(mb.memT)):''),
-    '24h 在线率 '+(b.onlinePct===null?'—':b.onlinePct+'%')+' · 掉线 '+(b.drops||0)+' 次'+(mb.diskA?(' · 磁盘剩 '+ohGb(mb.diskA)):''));
+  var bPct=ohPct(mb,mb.memT,mb.memA);
+  var cmem=ohPct(mc,mc.memT,mc.memA), cdisk=ohPct(mc,mc.diskT,mc.diskA);
+  var cBad=!c.on||(cmem!==null&&cmem>88)||(cdisk!==null&&cdisk>92);
+  var cWarn=!cBad&&((cmem!==null&&cmem>78)||(cdisk!==null&&cdisk>85));
+  var cCol=cBad?'#f85149':(cWarn?'#d29922':'#3fb950');
+  var cLab=!c.on?'离线':(cBad?'压力大':(cWarn?'注意':'在线'));
+  var h='';
+  h+=ohCard('A机',aCol,aLab,'内存 '+(a.memPct||0)+'%',
+    '● '+(ma.name||'本机')+' · linux(WSL2)\n内存压力 '+(a.memPct||0)+'%（峰值 '+(d.aMemPeak||0)+'%）· Swap '+(a.swapPct||0)+'% · 负载 '+(a.load||0).toFixed(2)+'\n'+(ma.ip||'?')+' · 磁盘已用 '+(a.diskPct||0)+'%');
+  h+=ohCard('OC系统',ocCol,ocLab,(oc.delayMaxMs||0)+'ms',
+    (oc.degraded?'事件循环降级':'事件循环正常')+' · 延迟 '+(oc.delayMaxMs||0)+'ms\n死信 '+(oc.dq||0)+' · 会话 '+(oc.sessions||0)+' · 通道 '+(oc.channels||0)+'\n24h 正常率 '+(oc.okPct||0)+'%');
+  h+=ohCard('B机',bCol,bLab,b.on?((bPct===null?'在线':bPct+'%')):'离线',
+    '● '+(mb.name||'—')+(mb.plat?(' · '+mb.plat):'')+'\n心跳 '+(b.seen?ohAge(b.seen):'—')+(mb.memT?(' · 内存 '+ohGb(mb.memA)+'/'+ohGb(mb.memT)):'')+'\n24h 在线率 '+(b.onlinePct===null?'—':b.onlinePct+'%')+' · 掉线 '+(b.drops||0)+' 次'+(mb.diskA?(' · 磁盘剩 '+ohGb(mb.diskA)):''));
+  h+=ohCard('C机',cCol,cLab,c.on?((cmem===null?'在线':cmem+'%')):'离线',
+    '● '+(mc.name||'C-Library')+(mc.plat?(' · '+mc.plat+(mc.ver?(' '+mc.ver):'')):'')+'\n'+(mc.memT?('内存 '+ohGb(mc.memA)+'/'+ohGb(mc.memT)+(cmem===null?'':('（'+cmem+'%）'))):'内存 —')+' · CPU '+(mc.cpu||'—')+' 核'+'\n'+(mc.diskA?('磁盘剩 '+ohGb(mc.diskA)+(cdisk===null?'':('（已用 '+cdisk+'%）'))):'磁盘 —')+' · 心跳 '+(c.seen?ohAge(c.seen):'—'));
   box.innerHTML=h;
+  if((!mb||!mb.name||!mc||!mc.name) && (window.__hsRetry=(window.__hsRetry||0)+1) <= 6){
+    setTimeout(function(){ pollOpsHealth(0); }, 2000);
+  } else if(mb && mb.name && mc && mc.name){ window.__hsRetry = 0; }
 }
-function pollOpsHealth(){ fetch('/api/health-summary',{cache:'no-store'}).then(function(r){return r.json();}).then(renderOpsHealth).catch(function(){ renderOpsHealth(null); }); }
-pollOpsHealth(); setInterval(pollOpsHealth, 60000);
+function pollOpsHealth(attempt){
+  attempt = attempt || 0;
+  fetch('/api/health-summary',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(renderOpsHealth).catch(function(e){
+    if (attempt < 3) { setTimeout(function(){ pollOpsHealth(attempt+1); }, 1200 + attempt*1200); return; }
+    renderOpsHealth(null);
+  });
+}
+pollOpsHealth(); setInterval(function(){ pollOpsHealth(0); }, 60000);
 window.onerror = function(m, src, line, col){ var e = document.getElementById('errline'); if (e) e.textContent = 'JS错误: ' + m + ' @' + line + ':' + col; };
 var STATE = null;
 var BUILD_SEEN = null;
@@ -1258,6 +1506,35 @@ function fitTodoFrame(bodyId, n){
   }
 }
 
+var TODO_LAST={mine:0,gg:0,frz:0};
+function layoutTodo(cMine,cGG,cFrz){
+  var b=document.getElementById('todos-gg')||document.getElementById('todos-mine'); if(!b) return;
+  var stack=b.closest('.tstack'); if(!stack) return;
+  if(typeof cMine==='number'){ TODO_LAST={mine:cMine||0,gg:cGG||0,frz:cFrz||0}; } else { cMine=TODO_LAST.mine; cGG=TODO_LAST.gg; cFrz=TODO_LAST.frz; }
+  if(stack.closest('.now3')) return;
+  var F={mine:stack.querySelector('.tframe.mine'),gg:stack.querySelector('.tframe.gg'),frz:stack.querySelector('.tframe.frz')};
+  var C={mine:cMine||0,gg:cGG||0,frz:cFrz||0};
+  var keys=['mine','gg','frz'], nat={}, head={};
+  keys.forEach(function(k){ var f=F[k]; if(!f) return; f.classList.toggle('zero',!C[k]); f.style.flex='0 0 auto'; f.style.height=''; f.style.minHeight='0'; f.style.maxHeight='none'; });
+  var avail=stack.clientHeight;
+  keys.forEach(function(k){ var f=F[k]; if(!f) return; var hd=f.firstElementChild; head[k]=hd?Math.round(hd.getBoundingClientRect().height):24; nat[k]=C[k]?Math.round(f.getBoundingClientRect().height):head[k]; });
+  var total=nat.mine+nat.gg+nat.frz;
+  if(total<=avail+3){ keys.forEach(function(k){ var f=F[k]; if(!f) return; f.style.flex='0 0 auto'; f.style.maxHeight='none'; }); return; }
+  var W={mine:C.mine*1.0,gg:C.gg*1.75,frz:C.frz*1.0};
+  var sum=W.mine+W.gg+W.frz||1, alloc={}, minH={};
+  keys.forEach(function(k){ minH[k]=head[k]+24; alloc[k]=Math.max(minH[k],Math.round(avail*W[k]/sum)); });
+  var over=(alloc.mine+alloc.gg+alloc.frz)-avail;
+  if(over>0){
+    keys.slice().sort(function(x,y){ return alloc[x]-alloc[y]; }).forEach(function(k){
+      if(over<=0) return;
+      var room=alloc[k]-minH[k];
+      var cut=Math.min(room,Math.ceil(over*0.6));
+      alloc[k]-=cut; over-=cut;
+    });
+  }
+  keys.forEach(function(k){ var f=F[k]; if(!f) return; f.style.flex='0 0 '+alloc[k]+'px'; f.style.height=alloc[k]+'px'; f.style.maxHeight='none'; });
+}
+window.addEventListener('resize',function(){ try{ layoutTodo(); }catch(e){} });
 function renderTodos(){
   var listMine = document.getElementById('todos-mine');
   var listGg = document.getElementById('todos-gg');
@@ -1288,9 +1565,7 @@ function renderTodos(){
   var allGg = items.filter(function(t){ return !isMine(t); });
   var frozen = allGg.filter(function(t){ return t.status === 'paused'; });
   var gg = allGg.filter(function(t){ return t.status !== 'paused'; });
-  fitTodoFrame('todos-mine', mine.length);
-  fitTodoFrame('todos-gg', gg.length);
-  fitTodoFrame('todos-frozen', frozen.length);
+  layoutTodo(mine.length, gg.length, frozen.length);
   function row(t){
     var dp = t.due_plan ? String(t.due_plan) : '';
     var eta = t.eta_min ? Number(t.eta_min) : 0;
@@ -1991,8 +2266,14 @@ function renderPC(){
       '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="1.7" stroke-linejoin="round"></polyline></svg>';
   }
   function mod(label, val, unit, pct, cls, sub, subHTML){
-    return '<div class="m"><div class="top"><span class="lbl">'+label+'</span>'+
-      '<span class="val">'+val+'<small>'+unit+'</small></span></div>'+
+    var pv=Math.max(0,Math.min(100,Number(pct)||0));
+    var SLB={'内存占用':'内存','事件循环延迟':'延迟','磁盘IO读取':'磁盘读','磁盘IO写入':'磁盘写','网络吞吐':'网络','网络接收':'网收','网络发送':'网发','GPU 温度':'GPU温','CPU 温度':'CPU温','提交队列':'提交','完成队列':'完成','会话数':'会话','活跃会话':'活跃'};
+    label=(SLB[label]||String(label).replace(/\s+/g,'')).slice(0,5);
+    var unit2=String(unit||'').replace(/\s+/g,'').replace('MHz','M').replace('GB/s','G/s').replace('MB/s','M/s').replace('KB/s','K/s');
+    var vtxt=String(val==null?'':val).replace(/\s+/g,'')+unit2;
+    var lv=vtxt.length>10?'3':(vtxt.length>7?'2':(vtxt.length>5?'1':'0'));
+    return '<div class="m" data-cls="'+(cls||'')+'" data-long="'+lv+'" style="--p:'+pv.toFixed(0)+'" title="'+esc(sub)+'"><div class="top"><span class="lbl">'+label+'</span>'+
+      '<span class="val">'+String(val==null?'':val).replace(/\s+/g,'')+'<small>'+unit2+'</small></span></div>'+
       histSVG(label, pct, cls)+
       '<div class="sub" title="'+esc(sub)+'">'+(subHTML||esc(sub))+'</div></div>';
   }
@@ -2112,6 +2393,17 @@ function applyTileOrder(el){
   el.appendChild(frag);
 }
 function resetTileOrder(){ TILE_ORDER = []; try { localStorage.removeItem('infowin.tileOrder'); } catch(e) {} location.reload(); }
+/* v3.9.145 自适应字号：数值宽度超格就逐级缩小，绝不出现省略号 */
+function fitTiles(){
+  var vs=document.querySelectorAll('#pc .m .val');
+  for(var i=0;i<vs.length;i++){
+    var v=vs[i]; v.style.fontSize='';
+    var fs=parseFloat(getComputedStyle(v).fontSize)||17, guard=0;
+    while(v.scrollWidth>v.clientWidth+1 && fs>8.5 && guard++<16){ fs-=0.8; v.style.setProperty('font-size',fs.toFixed(1)+'px','important'); }
+  }
+}
+window.addEventListener('resize',function(){ setTimeout(fitTiles,120); });
+setInterval(fitTiles,4000);
 (function keepTwoRows(){
   var pc = document.getElementById('pc'); var sg = document.querySelector('.statusgrid');
   if (!pc || !sg) return;
@@ -2154,6 +2446,46 @@ function resetTileOrder(){ TILE_ORDER = []; try { localStorage.removeItem('infow
   window.addEventListener('blur', endDrag);
 })();
 
+/* v3.9.126 底部四块与上方四块严格对齐：跟随 .main 的列模板 */
+function syncWinSize(){
+  var inner = document.querySelector('.main');
+  var bar = 38;
+  var wrapPad = 14 + 28;
+  var strip = 78;
+  var gaps = 24;
+  var h = Math.floor((window.innerHeight - bar - wrapPad - strip - gaps) / 2);
+  h = Math.max(240, Math.min(760, h));
+  document.documentElement.style.setProperty('--winH', h + 'px');
+}
+syncWinSize();
+window.addEventListener('resize', function(){ syncWinSize(); });
+function syncBottomRow(){
+  var mn=document.querySelector('.main'), br=document.querySelector('.bottomrow');
+  if(!mn||!br) return;
+  var cols=getComputedStyle(mn).gridTemplateColumns;
+  var n=cols.split(' ').filter(function(x){return x&&x!=='none';}).length;
+  if(n>=4){
+    br.style.setProperty('display','grid','important');
+    br.style.setProperty('grid-template-columns',cols,'important');
+    br.style.setProperty('gap',(getComputedStyle(mn).columnGap||'10px'),'important');
+    var span=Math.max(1, Math.floor(n/4));
+    [].forEach.call(br.children,function(c){ c.style.setProperty('grid-column','span '+span,'important'); c.style.setProperty('width','100%','important'); c.style.setProperty('min-width','0','important'); c.style.setProperty('height','var(--winH,420px)','important'); });
+  } else {
+    br.style.removeProperty('display');
+    br.style.removeProperty('grid-template-columns');
+    br.style.removeProperty('gap');
+    [].forEach.call(br.children,function(c){ c.style.removeProperty('grid-column'); c.style.removeProperty('width'); c.style.removeProperty('min-width'); c.style.removeProperty('height'); });
+  }
+}
+syncBottomRow();
+window.addEventListener('resize', function(){ setTimeout(syncBottomRow, 60); });
+if(window.ResizeObserver){ try{ new ResizeObserver(function(){ syncBottomRow(); }).observe(document.querySelector('.main')); }catch(e){} }
+function pollLogTail(){
+  fetch('/api/logtail',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    if(j && j.lines && j.lines.length){ STATE.logs = j.lines.map(function(x){ return {s:x}; }); renderLogs(); }
+  }).catch(function(){});
+}
+setTimeout(pollLogTail, 1500); setInterval(pollLogTail, 8000);
 function renderLogs(){
   var el = document.getElementById('logbody');
   var lines = STATE.logs || [];
@@ -3029,5 +3361,174 @@ renderClock();
 })();
 </script>
 
+<button id="hudbtn" class="hudbtn hudfab" title="切换炫酷 HUD 模式；默认保留原版外观">炫酷</button>
+<script>
+/* v3.9.96 HUD：Canvas 光环 + 数据弧 + 扫描线，数据来自 health-summary 与 host */
+(function(){
+  var cv=document.getElementById('hudcanvas'), btn=document.getElementById('hudbtn');
+  if(cv) cv.style.display='none';   /* v3.9.114 去掉中间圆圈 */
+  /* 底部数据带：接管健康数据，拼成跑马灯文本 */
+  window.__HUDDATA=function(d){
+    try{ window.__HUDTICK && window.__HUDTICK(d); }catch(e){}
+    try{
+      var a=(d&&d.a)||{}, oc=(d&&d.oc)||{}, m=(d&&d.machines)||{};
+      var bb=(d&&d.b)||{}, cc=(d&&d.c)||{};
+      var pct=function(v){ return (v==null||isNaN(v))?'--':(Math.round(v)+'%'); };
+      var mb=function(o){ return (o&&o.name)?o.name:'B机'; };
+      var mc=function(o){ return (o&&o.name)?o.name:'C机'; };
+      var t='◤ SYSTEM ONLINE · A机 内存 '+pct(a.memPct)+' / 负载 '+(a.load==null?'--':Number(a.load).toFixed(2))+
+        ' · OC 延迟 '+(oc.delayMaxMs==null?'--':Math.round(oc.delayMaxMs)+'ms')+' / 会话 '+(oc.sessions||0)+
+        ' · '+mb(m.b)+' 在线 '+(bb.onlinePct==null?'--':bb.onlinePct+'%')+
+        ' · '+mc(m.c)+' 在线 '+(cc.onlinePct==null?'--':cc.onlinePct+'%')+
+        ' · 链路 '+(bb.on&&cc.on?'正常':'部分离线')+' ◢';
+      var st=document.getElementById('hudstat'); if(st) st.textContent='◈ 链路 '+((bb.on&&cc.on)?'正常':'部分离线')+' · A '+pct(a.memPct);
+      var el=document.querySelector('#hudtick .tx');
+      if(el&&el.textContent!==t){ el.textContent=t; el.style.animationDuration=Math.max(18,Math.round(t.length*0.42))+'s'; }
+    }catch(e){ window.__HUDERR=String((e&&e.message)||e); }
+  };
+  fetch('/api/health-summary',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){ window.__HUDDATA(j); }).catch(function(){});
+  setInterval(function(){
+    if(!document.body.classList.contains('hud')) return;
+    var c=document.getElementById('hudclock'); if(!c) return;
+    var n=new Date(), p=function(x){return (x<10?'0':'')+x;};
+    c.textContent=p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds());
+  }, 1000);
+  if(!cv||!btn) return;
+  var ctx=cv.getContext('2d'), dpr=Math.min(2,window.devicePixelRatio||1);
+  var on=true;   /* v3.9.114 新版常驻，原版不再提供 */
+  var W=0,H=0;
+  function size(){ W=cv.clientWidth; H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
+  window.addEventListener('resize',size); size();
+  function setOn(v){ on=v; document.body.classList.toggle('hud',on); localStorage.setItem('hud',on?'1':'0'); btn.textContent=on?'原版':'炫酷'; if(on){ size(); lastAct=Date.now(); document.body.classList.remove('hud-idle'); kick(); } else { running=false; try{ctx.clearRect(0,0,W,H);}catch(e){} } }
+  btn.onclick=function(){ setOn(!on); };
+  setOn(on);
+  var D={a:0,c:0,b:0,oc:0,load:0};
+  /* v3.9.138 呼吸引擎：光束节奏跟随系统负载，不再固定频率 */
+  (function(){
+    var rnd=function(a,b){return a+Math.random()*(b-a);};
+    function scatter(){
+      var ps=document.querySelectorAll('body.hud .main>div,body.hud .bottomrow>div');
+      for(var i=0;i<ps.length;i++){ ps[i].style.setProperty('--pd',(-rnd(0,9)).toFixed(2)+'s'); }
+      var ms=document.querySelectorAll('#pc .m');
+      for(var j=0;j<ms.length;j++){ ms[j].style.setProperty('--td',(-rnd(0,7)).toFixed(2)+'s'); }
+    }
+    function breathe(d){
+      var a=(d&&d.a)||{}, oc=(d&&d.oc)||{};
+      var cpu=Math.max(0,Math.min(100,(a.load||0)*10));
+      var lag=Math.max(0,Math.min(150,(oc.delayMaxMs||0)));
+      var busy=Math.min(1,(cpu/70)*0.65+(lag/45)*0.35);
+      var base=9.2-busy*5.2;
+      /* 慢相位扰动：让节奏在两个极端之间来回摆，而不是每次都差不多 */
+      window.__BHP=(window.__BHP||0)+rnd(0.55,1.35);
+      var swing=1+0.42*Math.sin(window.__BHP);
+      var j=function(x){return (x*swing*(0.90+Math.random()*0.20)).toFixed(2)+'s';};
+      var r=document.documentElement.style;
+      r.setProperty('--bt',j(base*1.15));
+      r.setProperty('--pt',j(base*1.38));
+      r.setProperty('--ts',j(base*0.82));
+      r.setProperty('--tp',j(base*0.78));
+    }
+    var o=window.__HUDDATA;
+    window.__HUDDATA=function(d){ window.__LASTHUD=d; try{o(d);}catch(e){} try{breathe(d);}catch(e){} };
+    setTimeout(scatter,1200); setInterval(scatter,9000); setInterval(function(){ try{breathe(window.__LASTHUD||{});}catch(e){} },7000);
+  })();
+  window.__HUDTICK=function(d){
+    try{
+      var a=d.a||{}, oc=d.oc||{}, mb=(d.machines||{}).b||{}, mc=(d.machines||{}).c||{};
+      D.a=Math.max(0,Math.min(100,a.memPct||0));
+      D.load=Math.max(0,Math.min(100,(a.load||0)*10));
+      D.oc=Math.max(0,Math.min(100,oc.ok?(oc.delayMaxMs||0)/20:100));
+      D.b=mb.memT?Math.round(100*(mb.memT-(mb.memA||0))/mb.memT):0;
+      D.c=mc.memT?Math.round(100*(mc.memT-(mc.memA||0))/mc.memT):0;
+    }catch(e){}
+  };
+  var t0=performance.now(), sweep=0, scan=(performance.now()/1000)%8;
+  /* v3.9.97 有人才动：无操作 5 分钟 / 页面不可见 / 摄像头报离席 → 停画，输入即恢复 */
+  var IDLE_MS=8*60*1000, lastAct=Date.now(), running=false, rafId=0, presOK=true;
+  window.__setIdleMs=function(v){ IDLE_MS=Math.max(0,v|0); };
+  window.__HUDSTATS={frames:0,active:true,presence:true};
+  function isActive(){ return on && document.visibilityState!=='hidden' && presOK && (Date.now()-lastAct)<IDLE_MS; }
+  function act(){ lastAct=Date.now(); if(!presOK) return; document.body.classList.remove('hud-idle'); kick(); }
+  ['mousemove','mousedown','wheel','keydown','touchstart','pointerdown'].forEach(function(ev){
+    document.addEventListener(ev,act,{passive:true});
+  });
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'){ lastAct=Date.now(); kick(); } });
+  setInterval(function(){ if(!isActive()){ document.body.classList.add('hud-idle'); } }, 20000);
+  function pollPresence(){
+    fetch('/api/presence',{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      presOK = (j && j.known) ? !!j.on : true;
+      window.__HUDSTATS.presence = presOK;
+      if(!presOK){ document.body.classList.add('hud-idle'); }
+      else { kick(); }
+    }).catch(function(){ presOK = true; });
+  }
+  pollPresence(); setInterval(pollPresence, 5000);
+  function ring(r,cx,cy,a0,a1,col,w,seg){
+    ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.shadowColor=col; ctx.shadowBlur=10;
+    if(!seg){ ctx.beginPath(); ctx.arc(cx,cy,r,a0,a1); ctx.stroke(); }
+    else{ var n=seg, step=(a1-a0)/n; for(var i=0;i<n;i++){ var s0=a0+i*step; ctx.beginPath(); ctx.arc(cx,cy,r,s0+step*0.18,s0+step*0.72); ctx.stroke(); } }
+    ctx.restore();
+  }
+  function arc(r,cx,cy,pct,col){ if(!pct) return; ring(r,cx,cy,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100),col,3,0); }
+  function frame(t){
+    if(!isActive()){ running=false; try{ ctx.clearRect(0,0,W,H); }catch(e){}; window.__HUDSTATS.active=false; rafId=0; return; }
+    window.__HUDSTATS.active=true; window.__HUDSTATS.frames++;
+    var dt=(t-t0)/1000; t0=t;
+    ctx.clearRect(0,0,W,H);
+    var cx=W/2, cy=H/2, R=Math.min(W,H)*0.46;
+    var ph=dt;
+    sweep+=dt*0.35;
+    // 外环分段，微微变速
+    var jitter=Math.sin(sweep*1.7)*0.06+Math.sin(sweep*0.43)*0.05;
+    ring(R,cx,cy,-Math.PI*0.15+ph*0.02+jitter,Math.PI*1.15+ph*0.02,'rgba(0,229,255,.28)',1.4,64);
+    ring(R*0.965,cx,cy,0,Math.PI*2+ph*0.01,'rgba(0,229,255,.10)',1,0);
+    // 数据弧：A / B / C / OC
+    arc(R*0.98,cx,cy,D.a,'rgba(0,229,255,.55)');
+    arc(R*0.90,cx,cy,D.c,'rgba(53,255,168,.45)');
+    arc(R*0.82,cx,cy,D.b,'rgba(255,176,32,.45)');
+    arc(R*0.74,cx,cy,D.oc,'rgba(255,77,109,.45)');
+    // 内环反向
+    ring(R*0.55,cx,cy,-ph*0.35,Math.PI*2-ph*0.35,'rgba(0,229,255,.16)',1.2,36);
+    // 雷达扫掠
+    var sw=sweep% (Math.PI*2);
+    var g=ctx.createRadialGradient(cx,cy,R*0.18,cx,cy,R*1.02);
+    g.addColorStop(0,'rgba(0,229,255,0)'); g.addColorStop(.72,'rgba(0,229,255,.10)'); g.addColorStop(1,'rgba(0,229,255,0)');
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(sw); ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R*1.02,-0.16,0.16); ctx.closePath(); ctx.fillStyle=g; ctx.fill(); ctx.restore();
+    // 四角标记
+    var m=26, L=34;
+    ctx.strokeStyle='rgba(0,229,255,.35)'; ctx.lineWidth=1.4; ctx.beginPath();
+    ctx.moveTo(m,m+L);ctx.lineTo(m,m);ctx.lineTo(m+L,m);
+    ctx.moveTo(W-m-L,m);ctx.lineTo(W-m,m);ctx.lineTo(W-m,m+L);
+    ctx.moveTo(W-m,H-m-L);ctx.lineTo(W-m,H-m);ctx.lineTo(W-m-L,H-m);
+    ctx.moveTo(m+L,H-m);ctx.lineTo(m,H-m);ctx.lineTo(m,H-m-L);
+    ctx.stroke();
+    // 横向扫描线
+    scan=(scan+dt)%8;
+    var y=(scan/8)*H;
+    var lg=ctx.createLinearGradient(0,y-40,0,y+40);
+    lg.addColorStop(0,'rgba(0,229,255,0)'); lg.addColorStop(.5,'rgba(0,229,255,.07)'); lg.addColorStop(1,'rgba(0,229,255,0)');
+    ctx.fillStyle=lg; ctx.fillRect(0,y-40,W,80);
+    rafId=requestAnimationFrame(frame);
+  }
+  function kick(){ /* v3.9.114 圆环已移除，不再绘制 */ }
+  kick();
+})();
+</script>
+<script>
+/* v3.9.83 防烧屏：整页在 3px 网格上每 45s 漂一格，肉眼几乎看不出，但同一像素不会长期压同一个字 */
+(function(){
+  var wrap = document.querySelector('.wrap'); if(!wrap) return;
+  var G=[[0,0],[3,0],[3,3],[0,3],[-3,3],[-3,0],[-3,-3],[0,-3],[3,-3]];
+  var i=0;
+  wrap.style.transition='transform 8s ease-in-out';
+  wrap.style.willChange='transform';
+  /* v3.9.102：细网格(±3px/45s) + 大周期(±9px/15min) 叠加，原版与 HUD 都生效 */
+  var BIG=[[0,0],[9,6],[-9,6],[9,-6],[-9,-6]], bx=0, by=0, j=0, gx=0, gy=0;
+  function apply(){ wrap.style.transform='translate('+(gx+bx)+'px,'+(gy+by)+'px)'; }
+  function step(){ var g=G[i++ % G.length]; gx=g[0]; gy=g[1]; apply(); }
+  function big(){ var q=BIG[j++ % BIG.length]; bx=q[0]; by=q[1]; apply(); }
+  step(); setInterval(step, 45000); setInterval(big, 15*60*1000);
+})();
+</script>
 </body>
 </html>

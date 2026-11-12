@@ -71,6 +71,13 @@ def cmd_add(argv):
     if not rec['summary'].strip():
         print('结果不能为空')
         return 2
+    # 2026-11-12 自纠错闭环（M-20261112-001）：绝对断言必须带证据
+    import re as _re
+    _claim = _re.search(r'已(经)?(生效|修复|完成|解决|部署|上线|恢复)|恢复正常|无风险|不会再?出现|全部(通过|正常)|一切正常', rec['summary'] + ' ' + rec['target'])
+    if _claim and not rec['evidence'].strip():
+        print('拒绝入账：出现绝对断言（%s）但没有 evidence=' % _claim.group(0))
+        print('  补 evidence="命令与输出"，或把话说成"待验假设"')
+        return 3
     r = append(rec)
     print('入账 %s %s/%s %s' % (r['ts'], r['cat'], r['target'], r['hash']))
     return 0
