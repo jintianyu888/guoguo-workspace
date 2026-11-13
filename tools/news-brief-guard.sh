@@ -14,6 +14,9 @@ GUARDLOG=${NB_GUARDLOG:-$W/state/work/news-brief-guard.log}
 PUSH="$W/tools/news-brief-push.sh"
 LOCK=${NB_LOCK:-$W/state/tmp/news-brief-guard.lock}
 WINDOW_MIN=${NB_WINDOW_MIN:-50}
+# 2026-11-13：档位后先给 cron 留 GRACE_MIN 分钟，避免 cron 推送还在跑就被判「漏档」
+# 从而与 cron 并发双推（11-13 主公反馈「发了两遍」的成因）。
+GRACE_MIN=${NB_GRACE_MIN:-10}
 SLOTS=${NB_SLOTS:-"08:20 12:20 19:20"}
 NOW=${NB_NOW:-$(date "+%F %H:%M")}
 MODE=${1:-run}
@@ -40,7 +43,7 @@ slot_done() {
 target=""
 for s in $SLOTS; do
   s_min=$(( 10#${s%%:*} * 60 + 10#${s##*:} ))
-  if [ "$now_min" -ge "$s_min" ] && [ "$now_min" -le $(( s_min + WINDOW_MIN )) ]; then
+  if [ "$now_min" -ge $(( s_min + GRACE_MIN )) ] && [ "$now_min" -le $(( s_min + WINDOW_MIN )) ]; then
     target="$s"
   fi
 done

@@ -45,6 +45,13 @@ if [ "${1:-}" = "--alert" ]; then NOTIFY_ALERT=1; shift; fi
 NOTIFY_OWNER=0
 if [ "${1:-}" = "--to-owner" ]; then NOTIFY_OWNER=1; shift; fi
 
+# 2026-11-13 修：cron/systemd 的 PATH 里没有 npm-global，写死绝对路径（同一类坑：node-alive-check 报 FileNotFoundError）
+OC_BIN=""
+for _c in /home/j/.npm-global/bin/openclaw /home/j/.openclaw/tmp/agent-cli/openclaw; do
+  [ -x "$_c" ] && { OC_BIN="$_c"; break; }
+done
+[ -n "$OC_BIN" ] || OC_BIN="$(command -v openclaw 2>/dev/null || echo openclaw)"
+
 ALERT_LEDGER=/home/j/.openclaw/workspace/state/alerts/alerts.jsonl
 ledger_alert(){
   # 2026-11-08 告警双审修正：同进程只记一条，防主流程与 webhook 分支双写
@@ -194,7 +201,7 @@ fi
 if [ -n "$ACC" ]; then
   # 2026-11-08 修：单次发送实测 ~12s，同一分钟多个任务并发时会被挤爆；超时 45→90 秒，并重试一次
   for _try in 1 2; do
-    timeout 90 openclaw message send --channel feishu --account "$ACC" --target "$TARGET" --message "$MSG" >/dev/null 2>&1 && { SENT=1; break; }
+    timeout 90 "$OC_BIN" message send --channel feishu --account "$ACC" --target "$TARGET" --message "$MSG" >/dev/null 2>&1 && { SENT=1; break; }
     [ "$_try" = 1 ] && sleep 3
   done
   [ "$SENT" = "1" ] && mark_delivered
@@ -202,10 +209,15 @@ if [ -n "$ACC" ]; then
 fi
 FAILED=0
 if [ "$SENT" != "1" ]; then
-  if ! timeout 90 openclaw message send --channel feishu --target "$TARGET" --message "$MSG" >/dev/null 2>&1; then
-    echo "$(date '+%F %T') notify failed/timeout: ${MSG:0:60}" >> /home/j/.openclaw/workspace/state/notify-fail.log
+  _ef=/tmp/.notify-err.$$
+  timeout 90 "$OC_BIN" message send --channel feishu --target "$TARGET" --message "$MSG" >/dev/null 2>"$_ef"
+  _rc=$?
+  if [ "$_rc" != "0" ]; then
+    _err=$(tail -2 "$_ef" 2>/dev/null | tr '\n' ' ' | head -c 160)
+    echo "$(date '+%F %T') notify failed/timeout: ${MSG:0:60} | rc=$_rc err=${_err:-none}" >> /home/j/.openclaw/workspace/state/notify-fail.log
     FAILED=1
   fi
+  rm -f "$_ef"
 fi
 # 2026-11-03：严格模式，供需要"确认送达"的调用方（开机回执等）判断真实结果；默认仍 exit 0 不影响既有调用方
 if [ "${NOTIFY_STRICT:-0}" = "1" ] && [ "$FAILED" = "1" ]; then exit 1; fi

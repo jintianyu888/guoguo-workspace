@@ -131,6 +131,9 @@ def cmd_apply(dry=True):
         todo.append((j['id'], j['name'], want, fb))
     for jid, name, want, fb in todo:
         cmd = ['openclaw', 'cron', 'edit', jid, '--model', want, '--fallbacks', ','.join(fb)]
+        agent = str(j.get('agent') or j.get('agent_id') or '').strip()          # 多 agent 部署必须显式带 owner
+        if agent:
+            cmd += ['--agent', agent]
         if dry:
             print('DRY', want.split('/')[-1], '|', name[:26], '|', ','.join(fb))
         else:

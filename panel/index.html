@@ -276,7 +276,7 @@ h2.opsside-hd{margin:0;display:flex;align-items:center;gap:8px;padding:10px 16px
 .balpanel .balrow .bu{flex:0 0 230px !important;width:230px !important}
 .balpanel .balrow .bl{flex:0 0 90px !important;width:90px !important}
 .balpanel .balrow .bv{flex:0 0 84px !important;width:84px !important}
-.balpanel .balrow .bc{flex:0 0 50px !important;width:50px !important}
+.balpanel .balrow .bc{flex:0 0 38px !important;width:38px !important;text-align:left;font-size:10.5px}
 .balpanel .balrow .bd{flex:1 1 100% !important;order:9 !important;width:auto !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;color:#7f95ad !important;font-size:11px !important}
 .balrow.sub .bn{flex:0 0 auto !important;width:auto !important;max-width:340px !important}
 /* v3.7.4 修正：子行不受列预算影响 + 徽章与描述同线 */
@@ -944,7 +944,7 @@ body.hud .statusgrid .pc .m:before{content:"";position:absolute;left:0;right:0;b
   transition:height .7s ease;pointer-events:none}
 body.hud .statusgrid .pc .m:after{content:"";position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(0deg,rgba(0,229,255,.10) 0 1px,rgba(0,0,0,0) 1px 10px);
-  background-size:100% 10px;animation:tilescan var(--ts,4.5s) linear infinite}
+  background-size:100% 10px}
 @keyframes tilescan{from{background-position:0 0}to{background-position:0 -10px}}
 /* v3.9.135 大窗再炫：四角括号 + 顶部流光 + 标题渐变 */
 body.hud .main>div,body.hud .bottomrow>div{position:relative}
@@ -961,8 +961,8 @@ body.hud .main>div:before,body.hud .bottomrow>div:before{content:"";position:abs
   opacity:.55;filter:drop-shadow(0 0 4px rgba(0,229,255,.6))}
 body.hud .main>div:after,body.hud .bottomrow>div:after{content:"";position:absolute;left:0;top:0;height:2px;width:180px;pointer-events:none;z-index:4;
   background:linear-gradient(90deg,rgba(0,229,255,0),#9df3ff,rgba(0,229,255,0));
-  animation:panelline var(--pt,7.5s) linear infinite;animation-delay:var(--pd,0s);opacity:.9}
-@keyframes panelline{0%{left:-180px;opacity:0}10%{opacity:.95}85%{opacity:.95}100%{left:100%;opacity:0}}
+  animation:panelline var(--pt,60s) linear infinite;animation-delay:var(--pd,0s);opacity:.9}
+@keyframes panelline{0%{left:-180px;opacity:0}1.5%{opacity:.95}6%{left:100%;opacity:.95}7%{opacity:0}100%{left:100%;opacity:0}}
 /* v3.9.136 八大窗统一：同一套外壳 / 标题栏 / 内卡片 / 字色 */
 body.hud .main>div,body.hud .bottomrow>div{
   padding:7px 9px!important;display:flex;flex-direction:column;
@@ -1012,16 +1012,18 @@ body.hud .main>div.split>.panel>h2:before,body.hud .bottomrow>div.split>.panel>h
 body.hud .main>div.split>.panel>h2 .tag,body.hud .bottomrow>div.split>.panel>h2 .tag{
   margin-left:auto;font-size:10.5px;letter-spacing:.04em;color:#7fd2e6;background:none;border:0;padding:0}
 body.hud .main>div .ok,body.hud .bottomrow>div .ok{color:#86f5e4!important}
-body.hud .panel h2{background:linear-gradient(90deg,#bff3ff,#5fd8f5 70%,#2aa8c8);
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body.hud .panel h2,body.hud .main>div>h2,body.hud .bottomrow>div>h2{
+  background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:#d3f6ff!important;color:#d3f6ff!important;
+  text-shadow:0 0 7px rgba(0,229,255,.45)}
 /* v3.9.134 更炫：整条数据光束 + 格子依次呼吸 + 边缘流光 */
 body.hud .statusgrid .pc{position:relative}
 body.hud .statusgrid .pc:after{content:"";position:absolute;top:0;bottom:0;width:170px;pointer-events:none;z-index:5;
   background:linear-gradient(90deg,rgba(0,229,255,0) 0%,rgba(120,240,255,.28) 45%,rgba(230,255,255,.55) 50%,rgba(120,240,255,.28) 55%,rgba(0,229,255,0) 100%);
-  filter:blur(1px);animation:beam var(--bt,6.5s) linear infinite;mix-blend-mode:screen}
-@keyframes beam{0%{left:-170px;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
-body.hud .statusgrid .pc .m{animation:tilepulse var(--tp,4.2s) ease-in-out infinite;
-  animation-delay:calc(var(--p,50) * -0.045s + var(--td,0s))}
+  filter:blur(1px);animation:beam var(--bt,60s) linear infinite;animation-delay:var(--bgoff,0s);mix-blend-mode:screen}
+@keyframes beam{0%{left:-170px;opacity:0}1%{opacity:1}5%{left:100%;opacity:1}6%{opacity:0}100%{left:100%;opacity:0}}
+/* v3.9.151 去掉 30 格同时呼吸，改为静态微光 */
+body.hud .statusgrid .pc .m{animation:none}
 @keyframes tilepulse{0%,100%{box-shadow:0 0 0 rgba(0,229,255,0)}45%{box-shadow:0 0 14px rgba(0,229,255,.28),0 0 0 1px rgba(0,229,255,.35) inset}}
 body.hud .statusgrid .pc .m .lbl:before{content:"▸ ";color:#25c6e6}
 body.hud .statusgrid .pc .m[data-cls="y"]:before{background:linear-gradient(180deg,rgba(124,232,255,.40),rgba(0,140,190,.12));border-top-color:#9ff0ff}
@@ -1261,7 +1263,8 @@ body.hud.hud-idle #hudcanvas{opacity:0}
             </span>
           </div></div>
         </div>
-        <div id="opshealth" style="margin:6px 8px 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px"></div>
+        <div id="opshealth" style="margin:6px 8px 2px;display:grid;grid-template-columns:repeat(5,1fr);gap:5px"></div>
+        <div id="opsnas" style="margin:4px 8px 2px"></div>
         <pre class="opsout inline" id="opsoutinline">点分组内按钮执行；结果显示在这里。</pre>
         <div class="termbar" style="display:none" data-retired="v3.9.42"><span class="termtabs"><button class="ttab on" data-ts="1" title="Windows PowerShell（经 WSL 互操作）">PowerShell</button><button class="ttab" data-ts="2" title="Ubuntu / WSL bash 登录 shell">Ubuntu</button><button class="ttab" data-ts="3" title="Windows 命令提示符 cmd.exe">CMD</button></span><span class="termp">$</span><input id="terminput" type="text" spellcheck="false" autocomplete="off" placeholder="在这输入命令，回车执行（记录到 state/work/term-cmd.log）"><button class="opstbtn" id="termsend">执行</button><button class="opstbtn" id="termctrlc" title="发送 Ctrl-C 中断">中断</button><button class="opstbtn" id="termback" title="回到系统运行状态">返回</button><input id="termsecret" type="password" autocomplete="off" spellcheck="false" placeholder="密文输入（不记录/不回显）" style="flex:0 0 150px"><button class="opstbtn" id="termsecsend" title="把密文送入终端并回车（不写日志）">送入</button></div>
   </div>
@@ -1317,6 +1320,42 @@ function renderOpsHealth(d){
     '● '+(mb.name||'—')+(mb.plat?(' · '+mb.plat):'')+'\n心跳 '+(b.seen?ohAge(b.seen):'—')+(mb.memT?(' · 内存 '+ohGb(mb.memA)+'/'+ohGb(mb.memT)):'')+'\n24h 在线率 '+(b.onlinePct===null?'—':b.onlinePct+'%')+' · 掉线 '+(b.drops||0)+' 次'+(mb.diskA?(' · 磁盘剩 '+ohGb(mb.diskA)):''));
   h+=ohCard('C机',cCol,cLab,c.on?((cmem===null?'在线':cmem+'%')):'离线',
     '● '+(mc.name||'C-Library')+(mc.plat?(' · '+mc.plat+(mc.ver?(' '+mc.ver):'')):'')+'\n'+(mc.memT?('内存 '+ohGb(mc.memA)+'/'+ohGb(mc.memT)+(cmem===null?'':('（'+cmem+'%）'))):'内存 —')+' · CPU '+(mc.cpu||'—')+' 核'+'\n'+(mc.diskA?('磁盘剩 '+ohGb(mc.diskA)+(cdisk===null?'':('（已用 '+cdisk+'%）'))):'磁盘 —')+' · 心跳 '+(c.seen?ohAge(c.seen):'—'));
+  var dd=d.d||{}, md=m.d||{};
+  var dmem=ohPct(md,md.memT,md.memA);
+  var dOn=!!dd.on;
+  var dCol=dOn?(((dmem!==null&&dmem>88))?'#f85149':'#3fb950'):'#6b7c8f';
+  var dLab=dOn?'在线':(dd.seen?'离线':'待接入');
+  h+=ohCard('D机',dCol,dLab,dOn?((dmem===null?'在线':dmem+'%')):'—',
+    dOn ? ('● '+(md.name||'—')+(md.plat?(' · '+md.plat):'')
+      +'\n内存 '+(md.memT?ohGb(md.memA)+'/'+ohGb(md.memT):'—')+' · 心跳 '+(dd.seen?ohAge(dd.seen):'—')
+      +'\n'+(md.ip||'IP —'))
+    : ('● 未接入 · 把新机器注册为 OpenClaw 节点并命名 D机 / D-Library，此项自动点亮'
+      +'\n当前状态：等待接入（无节点数据）'));
+  var nr=d.nas||null;
+  var nbox=document.getElementById('opsnas');
+  if(nbox){
+    if(!nr){
+      nbox.innerHTML='<div style="border:1px solid #21262d;border-radius:7px;padding:4px 8px;font-size:10.5px;color:#6b7c8f">NAS · 未采集</div>';
+    } else {
+      var nOk=!!nr.ok, nPct=(nr.usedPct==null?null:nr.usedPct);
+      var nCol=!nOk?'#f85149':(nPct!==null&&nPct>92?'#d29922':'#3fb950');
+      var nLab=!nOk?'断开':('正常 '+(nr.ms==null?'':nr.ms+'ms'));
+      var gb=function(x){ return x?(x/1073741824).toFixed(1)+'G':'-'; };
+      var barW=nPct==null?0:Math.max(0,Math.min(100,nPct));
+      var tip=('挂载 /mnt/nas（//192.168.1.109/home）\n状态 '+(nOk?'已挂载':'不可用'+(nr.err?(' · '+nr.err):''))
+        +'\n容量 '+(nPct==null?'—':(nPct+'%（已用 '+gb(nr.total-nr.free)+' / 共 '+gb(nr.total)+'）'))
+        +'\n采样 '+(nr.checkedAt?new Date(nr.checkedAt).toLocaleTimeString('zh-CN',{hour12:false}):'—')
+        +' · 响应 '+(nr.ms==null?'—':nr.ms+'ms')).replace(/"/g,'&quot;');
+      nbox.innerHTML='<div title="'+tip+'" style="display:flex;align-items:center;gap:8px;border:1px solid #21262d;background:rgba(56,139,253,.06);border-radius:7px;padding:4px 8px;font-size:10.5px;white-space:nowrap;overflow:hidden">'
+        +'<b style="color:#e6edf3">NAS</b>'
+        +'<span style="color:'+nCol+';font-weight:700">'+nLab+'</span>'
+        +'<span style="flex:1;min-width:60px;height:6px;background:#1b2430;border-radius:3px;overflow:hidden">'
+        +'<i style="display:block;height:100%;width:'+barW+'%;background:'+nCol+';opacity:.75"></i></span>'
+        +'<span style="color:#9fb3c8">'+(nPct==null?'—':nPct+'%')+'</span>'
+        +'<span style="color:#7d90a4">已用 '+gb(nr.total-nr.free)+' / '+gb(nr.total)+'</span>'
+        +'</div>';
+    }
+  }
   box.innerHTML=h;
   if((!mb||!mb.name||!mc||!mc.name) && (window.__hsRetry=(window.__hsRetry||0)+1) <= 6){
     setTimeout(function(){ pollOpsHealth(0); }, 2000);
@@ -1732,9 +1771,10 @@ function ratePill(name){
   var r = STATE && STATE.usageRate && STATE.usageRate.byProvider;
   var k = pkeyOf(name);
   var v = (r && k) ? r[k] : null;
-  if (!v) return '<span class="rpill">— tok/s</span>';
+  if (!v) return '<span class="rpill idle">空闲</span>';
   var tps = (typeof v.tps === 'number') ? v.tps : 0;
   var pm = (typeof v.pm10 === 'number') ? v.pm10 : 0;
+  if (tps <= 0 && pm <= 0) return '<span class="rpill idle">空闲</span>';
   return '<span class="rpill' + (tps > 0 ? ' hot' : '') + '" title="近 10 分钟：输出约 ' + tps.toFixed(1) + ' token/秒，请求 ' + pm.toFixed(1) + ' 次/分">'
     + tps.toFixed(1) + ' tok/s · ' + pm.toFixed(1) + '/分</span>';
 }
@@ -1865,19 +1905,20 @@ function renderBalances(){
     var ageTxt = (ageMin != null && ageMin >= 60) ? (' · ' + (ageMin >= 1440 ? Math.floor(ageMin / 1440) + '天' : Math.floor(ageMin / 60) + 'h')) : '';
     var capTitle = b.capturedAt ? ('；数据 ' + String(b.capturedAt).slice(5, 16).replace('T', ' ')) : '';
     var val = '';
-    if (b.text) {
-      val = '<span class="bv" style="font-size:14px">' + b.text + '</span>';
-    } else if (b.balance != null) {
-      var shown = (b.unit && b.unit.indexOf('%') >= 0)
-        ? String(Math.round(b.balance * 100) / 100)
-        : ((Math.abs(b.balance) >= 1000) ? fmtNum(Math.round(b.balance)) : b.balance.toFixed(2));
-      val = '<span class="bv">' + shown + '</span>' +
-            '<span class="bc">' + (b.unit || b.currency || '') + '</span>';
-    } else if (b.unit) {
-      val = '<span class="bv">—</span><span class="bc">' + b.unit + '</span>';
+    var isPct = !!(b.unit && String(b.unit).indexOf('%') >= 0);
+    var unitTxt = isPct ? '%' : (String(b.unit || b.currency || '').replace(/可用/g, '').trim());
+    var numTxt;
+    if (b.balance != null) {
+      numTxt = isPct ? String(Math.round(b.balance))
+        : ((Math.abs(b.balance) >= 1000) ? fmtNum(Math.round(b.balance)) : (Math.round(b.balance * 100) / 100).toFixed(2));
+    } else if (b.text) {
+      var mm2 = String(b.text).match(/^(.*?)([A-Z]{2,4}|%)?$/);
+      numTxt = String(b.text).replace(/[A-Z]{2,4}$/, '').replace(/%$/, '').trim();
+      if (!unitTxt) unitTxt = (String(b.text).match(/([A-Z]{2,4}|%)$/) || [])[1] || '';
     } else {
-      val = '<span class="bv">—</span>';
+      numTxt = '—';
     }
+    val = '<span class="bv">' + numTxt + '</span>' + '<span class="bc">' + (unitTxt || '') + '</span>';
     return '<div class="balrow"' + (b.title ? ' title="' + esc(b.title) + '"' : '') + '>' +
       '<span class="b-dot ' + m.dot + '"></span>' +
       ratePill(b.provider) +
@@ -1886,7 +1927,7 @@ function renderBalances(){
       '<span class="bl" title="' + lastTipLU(b.provider) + '"><span class="u1">上次</span><span class="u2">' + lastAgo(b.provider) + '</span></span>' +
       val +
       '<span class="bd" title="' + (b.detail || '') + '">' + (b.detail || '') + '</span>' +
-      priceBadge(b) + termBadge(b) +
+      (priceBadge(b) || '<span class="pbadge"></span>') + (termBadge(b) || '<span class="tbadge"></span>') +
       '<button class="rb pill ' + m.pill + '" data-p="' + bkey(b.provider) + '" title="点击刷新 ' + esc(b.provider) + ' 额度' + capTitle + '">' + m.text + ageTxt + '<i class="rbi">⟳</i></button></div>';
   }).join('');
 }
@@ -2660,6 +2701,26 @@ function renderTools(){
 
 
 
+var PM = { data: null, at: 0 };
+function loadProviderModels(cb){
+  if (PM.data && Date.now() - PM.at < 300000) { cb && cb(); return; }
+  fetch('/api/provider-models', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){
+    PM.data = j || {}; PM.at = Date.now(); cb && cb();
+  }).catch(function(){ cb && cb(); });
+}
+var PM_MAP = { 'DeepSeek': ['deepseek'], '智谱': ['zhipu', 'zai'], 'Kimi': ['kimi-coding', 'kimi'], 'MiniMax': ['minimax'], '千问': ['qianwen-token-plan', 'qianwen', 'qwen'], 'OpenRouter': ['openrouter'] };
+function provModels(prov){
+  var ids = PM_MAP[prov] || []; var out = [];
+  if (!PM.data) return out;
+  ids.forEach(function(id){
+    var arr = PM.data[id]; if (!arr) return;
+    arr.forEach(function(m){
+      var nm = (m.id && m.id.indexOf('/') >= 0) ? m.id.split('/').pop() : (m.name || m.id);
+      if (nm && out.indexOf(nm) < 0) out.push(nm);
+    });
+  });
+  return out;
+}
 function renderModelSubs(){
   var box=document.getElementById('balances'); if(!box||!STATE) return;
   var ms=(STATE.modelStats||{}).by||{};
@@ -2678,8 +2739,12 @@ function renderModelSubs(){
     KNOWN[prov].forEach(function(km){
       if (subs.indexOf(km) < 0) subs.push(km);
     });
+    provModels(prov).forEach(function(km){
+      if (subs.indexOf(km) < 0) subs.push(km);
+    });
     if (prov.indexOf('千问') >= 0) subs = subs.filter(function(m){ return /^qwen3[.][78]-/.test(m) || m === 'auto'; });
-    subs = subs.filter(function(m){ return ms[m] || (KNOWN[prov]||[]).indexOf(m) >= 0; });
+    var PML = provModels(prov);
+    subs = subs.filter(function(m){ return ms[m] || (KNOWN[prov]||[]).indexOf(m) >= 0 || PML.indexOf(m) >= 0; });
     if(!subs.length) return;
     var wrap=document.createElement('div'); wrap.className='subwrap';
     var items=[];
@@ -2784,6 +2849,8 @@ function renderLocal(){
   var tg=document.getElementById('local-tag'); if(tg){ tg.textContent = anyUp?('在线'+(totalModels>0?(' · '+totalModels+' 模型'):'')) : '离线'; tg.title = epCounts.length?(epCounts.map(function(e){return e.name.replace(/ .*/,'')+' '+e.n;}).join(' · ')+'（按端点实例计，同名模型不合并）'):''; }
 }
 setInterval(function(){ try{renderModelSubs(); renderLocal(); renderOpsLive();}catch(e){} }, 3000);
+loadProviderModels(function(){ try{ renderModelSubs(); }catch(e){} });
+setInterval(function(){ loadProviderModels(null); }, 300000);
 var __opsOutAt=0;
 function renderOpsStat(){
   if(window.__TERMVIEW) return;
@@ -3403,34 +3470,18 @@ renderClock();
   btn.onclick=function(){ setOn(!on); };
   setOn(on);
   var D={a:0,c:0,b:0,oc:0,load:0};
-  /* v3.9.138 呼吸引擎：光束节奏跟随系统负载，不再固定频率 */
+  /* v3.9.152 节奏对齐 OC：60 秒一轮，按分钟起点起跑，8 窗每 7.5 秒依次一道流光 */
   (function(){
-    var rnd=function(a,b){return a+Math.random()*(b-a);};
-    function scatter(){
+    function align(){
+      var now=Date.now()/1000, off=-(now%60), r=document.documentElement.style;
+      r.setProperty('--bt','60s'); r.setProperty('--pt','60s');
+      r.setProperty('--bgoff',off.toFixed(2)+'s');
       var ps=document.querySelectorAll('body.hud .main>div,body.hud .bottomrow>div');
-      for(var i=0;i<ps.length;i++){ ps[i].style.setProperty('--pd',(-rnd(0,9)).toFixed(2)+'s'); }
-      var ms=document.querySelectorAll('#pc .m');
-      for(var j=0;j<ms.length;j++){ ms[j].style.setProperty('--td',(-rnd(0,7)).toFixed(2)+'s'); }
+      for(var i=0;i<ps.length;i++){ ps[i].style.setProperty('--pd',(off-7.5*i).toFixed(2)+'s'); }
     }
-    function breathe(d){
-      var a=(d&&d.a)||{}, oc=(d&&d.oc)||{};
-      var cpu=Math.max(0,Math.min(100,(a.load||0)*10));
-      var lag=Math.max(0,Math.min(150,(oc.delayMaxMs||0)));
-      var busy=Math.min(1,(cpu/70)*0.65+(lag/45)*0.35);
-      var base=9.2-busy*5.2;
-      /* 慢相位扰动：让节奏在两个极端之间来回摆，而不是每次都差不多 */
-      window.__BHP=(window.__BHP||0)+rnd(0.55,1.35);
-      var swing=1+0.42*Math.sin(window.__BHP);
-      var j=function(x){return (x*swing*(0.90+Math.random()*0.20)).toFixed(2)+'s';};
-      var r=document.documentElement.style;
-      r.setProperty('--bt',j(base*1.15));
-      r.setProperty('--pt',j(base*1.38));
-      r.setProperty('--ts',j(base*0.82));
-      r.setProperty('--tp',j(base*0.78));
-    }
-    var o=window.__HUDDATA;
-    window.__HUDDATA=function(d){ window.__LASTHUD=d; try{o(d);}catch(e){} try{breathe(d);}catch(e){} };
-    setTimeout(scatter,1200); setInterval(scatter,9000); setInterval(function(){ try{breathe(window.__LASTHUD||{});}catch(e){} },7000);
+    align();
+    setInterval(function(){ var t=Date.now()/1000; if((t%60)<1.2) align(); },1000);
+    setInterval(align,60000);
   })();
   window.__HUDTICK=function(d){
     try{
@@ -3530,5 +3581,97 @@ renderClock();
   step(); setInterval(step, 45000); setInterval(big, 15*60*1000);
 })();
 </script>
+<div id="ocActivity" style="display:none;position:fixed;inset:0;z-index:99999;pointer-events:none;align-items:center;justify-content:center;background:rgba(2,8,14,.42)">
+  <div id="ocActCard" style="width:min(820px,88vw);background:rgba(6,16,26,.97);border:2px solid #26b6d8;border-radius:18px;padding:26px 34px 28px;color:#d8f3ff;font:17px/1.6 sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.75)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:18px">
+      <span id="ocActTitle" style="font-size:28px;font-weight:800;letter-spacing:.5px">—</span>
+      <span id="ocActPct" style="font-size:46px;font-weight:900;color:#6fe6ff;font-family:Consolas,monospace;line-height:1">—</span>
+    </div>
+    <div style="margin-top:18px;height:22px;background:#0d2231;border-radius:11px;overflow:hidden">
+      <div id="ocActBar" style="height:100%;width:0;background:linear-gradient(90deg,#26b6d8,#7ef9ff);transition:width .6s ease"></div>
+    </div>
+    <div id="ocActNote" style="margin-top:14px;color:#8fc0d6;font-size:15px;line-height:1.6"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var el=document.getElementById('ocActivity');
+  function fmt(m){ m=Math.max(0,Math.round(m)); return m>=60?(Math.floor(m/60)+' 小时 '+(m%60)+' 分'):(m+' 分钟'); }
+  function tick(){
+    fetch('/api/activity',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+      var active = d && d.kind && d.kind!=='idle';
+      if(!active){
+        // 空闲时顺便看主脑是否在线：网关挂了要能看出来
+        fetch('/api/health-summary',{cache:'no-store'}).then(function(r){return r.json();}).then(function(h){
+          var ok = h && h.oc && h.oc.ok !== false;
+          if(ok){ el.style.display='none'; return; }
+          el.style.display='flex';
+          document.getElementById('ocActCard').style.borderColor='#e0573f';
+          document.getElementById('ocActTitle').textContent='⛔ 主脑（网关）无响应';
+          document.getElementById('ocActPct').textContent='离线';
+          document.getElementById('ocActBar').style.width='100%';
+          document.getElementById('ocActBar').style.background='#e0573f';
+          document.getElementById('ocActNote').textContent='面板仍在运行，说明不是整机崩溃；看门狗与自救会尝试拉起，恢复后这条自动消失。';
+        }).catch(function(){
+          el.style.display='flex';
+          document.getElementById('ocActCard').style.borderColor='#e0573f';
+          document.getElementById('ocActTitle').textContent='⛔ 主脑（网关）无响应';
+          document.getElementById('ocActPct').textContent='离线';
+          document.getElementById('ocActBar').style.width='100%';
+          document.getElementById('ocActBar').style.background='#e0573f';
+          document.getElementById('ocActNote').textContent='面板仍在运行，说明不是整机崩溃；看门狗与自救会尝试拉起。';
+        });
+        return;
+      }
+      document.getElementById('ocActCard').style.borderColor='#26b6d8';
+      document.getElementById('ocActBar').style.background='linear-gradient(90deg,#26b6d8,#7ef9ff)';
+      var age = Math.floor(Date.now()/1000) - (d.updated_at||0);
+      if(age > 1800){ el.style.display='none'; return; }
+      el.style.display='flex';
+      var KMAP={restart:'网关重启',backup:'备份',mirror:'备份镜像',upgrade:'版本升级',t1:'T1 关键备份',t2:'T2 中间备份'};
+      var label = KMAP[d.kind] || d.kind || '任务';
+      if(d.phase && d.phase.indexOf('演示')<0 && d.kind==='backup'){ label = label + ' · ' + d.phase; }
+      document.getElementById('ocActTitle').textContent = '⏳ ' + label + (d.phase? (' · ' + d.phase) : '');
+      var p = (typeof d.percent==='number') ? d.percent : null;
+      document.getElementById('ocActPct').textContent = p!=null ? (p+'%') : '';
+      document.getElementById('ocActBar').style.width = (p!=null ? p : 6) + '%';
+      var note = [];
+      if(p!=null && p<100 && d.started_at){ note.push('已运行 ' + fmt((Date.now()/1000 - d.started_at)/60)); }
+      if(d.eta_min){ note.push('预计还需 ' + fmt(d.eta_min)); }
+      if(d.note){ note.push(String(d.note).slice(0,80)); }
+      document.getElementById('ocActNote').textContent = note.join(' · ');
+    }).catch(function(){});
+  }
+  tick(); setInterval(tick, 20000);
+})();
+
+/* 网关掉线大卡：面板自身活着，说明不是整机崩溃 */
+(function(){
+  var down = 0, card = null;
+  function build(){
+    card = document.createElement('div');
+    card.id='ocGwDown';
+    card.style.cssText='position:fixed;inset:0;z-index:100000;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(30,4,4,.55)';
+    card.innerHTML = '<div style="width:min(820px,88vw);background:rgba(28,6,6,.97);border:2px solid #e0573f;border-radius:18px;padding:30px 34px;color:#ffe6e0;font:17px/1.6 sans-serif;box-shadow:0 18px 60px rgba(0,0,0,.8)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:28px;font-weight:800">⛔ 主脑（网关）无响应</span><span id="ocGwSec" style="font-size:44px;font-weight:900;color:#ff8d78;font-family:Consolas,monospace">0s</span></div>'
+      + '<div style="margin-top:16px;color:#ffb3a3" id="ocGwNote">面板仍在运行 → 说明不是整机崩溃，是主脑进程断开。我这边会自动重试并恢复。</div>'
+      + '<div style="margin-top:12px;color:#c98a7d;font-size:14px">如果超过 5 分钟仍是这样，看飞书告警；整机断电时会连同面板一起消失。</div>'
+      + '</div>';
+    document.body.appendChild(card);
+  }
+  function tick(){
+    fetch('/api/gw',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+      if(d && d.ok){ down=0; if(card){ card.remove(); card=null; } }
+      else { down++; if(down>=2){ if(!card) build(); } }
+    }).catch(function(){ down++; if(down>=2 && !card) build(); });
+    if(card){
+      var s0 = Math.floor((Date.now() - (card.__t||(card.__t=Date.now())))/1000);
+      var e = document.getElementById('ocGwSec'); if(e) e.textContent = s0+'s';
+    }
+  }
+  setInterval(tick, 10000); setTimeout(tick, 4000);
+})();
+
+
 </body>
 </html>

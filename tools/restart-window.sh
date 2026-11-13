@@ -87,6 +87,9 @@ fi
 # 3) 执行重启
 if [ "$DRY" = "1" ]; then say "dry-run：不执行重启"; exit 0; fi
 say "→ 提交受控重启"
+NOTIFY_ACCOUNT=default notify "【即将重启】每日 08:00 受控重启开始，网关会有 1–2 分钟不可用。进度见果果助手面板顶部横幅，恢复后我会再报一条。"
+touch "$W/state/work/.restart-in-progress"
+python3 "$W/tools/activity.py" set kind=restart phase="网关重启中" percent=50 note="预计 1–2 分钟恢复" >/dev/null 2>&1 || true
 OLD_PID=$(systemctl --user show -p MainPID --value openclaw-gateway 2>/dev/null)
 bash "$W/tools/restart-gateway.sh" --reason "每日08:00窗口自动重启(自检通过 ${VERDICT})" 2>&1 | tail -4
 RG_RC=${PIPESTATUS[0]}
@@ -120,6 +123,15 @@ if [ -f "$Q" ]; then
   N=$(grep -c '^- \[ \]' "$Q" 2>/dev/null || echo 0)
   say "重启队列待办：$N 项（详见 $Q）"
 fi
+
+# 5.5) 恢复/失败通知 + 清状态
+if [ "$H" = "200" ]; then
+  NOTIFY_ACCOUNT=default notify "【已恢复】网关已重新上线（health 200），服务正常，可以正常用了。"
+else
+  NOTIFY_ACCOUNT=default notify "【重启后异常】网关 health=$H，看门狗与自救已介入。"
+fi
+python3 "$W/tools/activity.py" clear >/dev/null 2>&1 || true
+rm -f "$W/state/work/.restart-in-progress"
 
 # 6) 报备
 if [ "$H" = "200" ]; then

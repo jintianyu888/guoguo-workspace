@@ -9,16 +9,30 @@
 动作：有超期节点 -> notify.sh 一条（同类 6 小时内只报一次）；明细写 state/work/node-alive.json
 退出码：0 全部在期 / 1 有超期节点
 """
-import json, os, subprocess, sys, time
+import json, os, shutil, subprocess, sys, time
 
 WS = '/home/j/.openclaw/workspace'
 STATE = os.path.join(WS, 'state', 'work', 'node-alive.json')
 STALE_MIN = int(os.environ.get('NODE_STALE_MIN', '30'))
 DEDUP_H = 6
 
+OC_CANDIDATES = ('/home/j/.npm-global/bin/openclaw', '/home/j/.openclaw/tmp/agent-cli/openclaw')
+
+
+def oc_bin():
+    """systemd 用户单元里 PATH 不含 npm-global，直接写死候选绝对路径（2026-11-13 修）。"""
+    for c in OC_CANDIDATES:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return shutil.which('openclaw') or 'openclaw'
+
+
 def nodes():
-    p = subprocess.run(['openclaw', 'nodes', 'list', '--json'], capture_output=True, text=True, timeout=60)
-    return json.loads(p.stdout)['paired']
+    p = subprocess.run([oc_bin(), 'nodes', 'list', '--json'], capture_output=True, text=True, timeout=60)
+    out = (p.stdout or '').strip()
+    if p.returncode != 0 or not out:
+        raise RuntimeError('openclaw nodes list failed rc=%s err=%s' % (p.returncode, (p.stderr or '')[:200]))
+    return json.loads(out)['paired']
 
 def main():
     st = {}
@@ -31,9 +45,13 @@ def main():
         name = n.get('displayName') or n.get('nodeId', '')[:8]
         last = n.get('lastConnectedAtMs') or 0
         disc = n.get('lastDisconnectedAtMs') or 0
-        age_min = (now - last) / 60000 if last else 99999
-        offline = disc > last
-        if age_min > STALE_MIN:
+        connected = n.get('connected')
+        # 关键修正（M-20261112-003）：lastConnectedAtMs 是"连上的时刻"，不是心跳。
+        # 连接着的节点这个值可以很旧，用它算"掉线"会误报。以 connected 标志为准。
+        offline = (connected is False) or (disc > last)
+        ref = disc if disc > last else last
+        age_min = (now - ref) / 60000 if ref else 99999
+        if offline and age_min > STALE_MIN:
             stale.append({'name': name, 'age_min': round(age_min, 1),
                           'offline_flag': offline,
                           'last': time.strftime('%Y-%m-%d %H:%M', time.localtime(last / 1000)) if last else 'never'})
@@ -61,7 +79,9 @@ def main():
         subprocess.run(['bash', os.path.join(WS, 'tools', 'notify.sh'), msg], timeout=60)
         ded[sig] = time.time()
         json.dump(ded, open(dp, 'w'))
-    return 1
+    # 2026-11-13 修：stale 是「内容结论」不是「脚本故障」。返回 1 会让 systemd 每次把
+    # 单元标 failed（节点没上线的整段时间里天天误报 P1）。真实错误仍走异常 → exit 1。
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main())

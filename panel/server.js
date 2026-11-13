@@ -1670,6 +1670,30 @@ function healthSample(){
 healthSample();
 setInterval(healthSample, 60000);
 let HEALTH_SUM_C = { t: 0, body: null };
+
+/* v3.9.154 NAS 采样：CIFS 可能卡住，异步 + 1 秒超时，不阻塞事件循环 */
+let NAS_STAT = { ok: false, path: '/mnt/nas', total: 0, free: 0, usedPct: null, ms: null, err: 'init', checkedAt: 0 };
+function sampleNas() {
+  const t0 = Date.now();
+  const done = (ok, st, err) => {
+    const out = { ok: ok, path: '/mnt/nas', total: 0, free: 0, usedPct: null, ms: Date.now() - t0, err: err || null, checkedAt: Date.now() };
+    if (st) {
+      out.total = Number(st.bsize) * Number(st.blocks);
+      out.free = Number(st.bsize) * Number(st.bavail);
+      out.usedPct = out.total ? Math.round(100 * (out.total - out.free) / out.total) : null;
+    }
+    NAS_STAT = out;
+  };
+  try {
+    const pr = fs.promises.statfs ? fs.promises.statfs('/mnt/nas') : Promise.reject(new Error('no statfs'));
+    Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 1000))])
+      .then(st => done(true, st, null))
+      .catch(e => done(false, null, String((e && e.message) || e).slice(0, 60)));
+  } catch (e) { done(false, null, String((e && e.message) || e).slice(0, 60)); }
+}
+sampleNas();
+const NAS_IV = setInterval(sampleNas, 60000);
+if (NAS_IV && NAS_IV.unref) NAS_IV.unref();
 let NODES_REFRESHING = false;
 let UPG_STATE = { t: 0, body: null, busy: false };
 let PRESENCE = { on: true, at: 0, src: '', ttl: 120000 };
@@ -1988,6 +2012,63 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ===== 健康总览：A机/OC/B机 + 24h 稳定性 =====
+  if (url.pathname === '/api/provider-models') {
+    /* v3.9.155 从 openclaw 配置读出每个 provider 的模型清单，供云端模型面板统一展示 */
+    const now = Date.now();
+    if (!global.__PM_C || now - global.__PM_C.t > 300000) {
+      const out = {};
+      try {
+        const cfg = JSON.parse(fs.readFileSync(process.env.OPENCLAW_CONFIG || '/home/j/.openclaw/openclaw.json', 'utf8'));
+        const provs = (cfg.models && cfg.models.providers) || {};
+        for (const k of Object.keys(provs)) {
+          const ms = (provs[k] && provs[k].models) || [];
+          out[k] = ms.map(m => ({ id: String(m.id || ''), name: String(m.name || (m.id || '').split('/').pop() || '') }));
+        }
+      } catch (e) { global.__PM_E = String(e.message || e); }
+      global.__PM_C = { t: now, data: out };
+    }
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify(global.__PM_C.data));
+    return;
+  }
+
+  if (url.pathname === '/api/activity') {
+    try {
+      const fs2 = require('fs');
+      const raw = fs2.readFileSync('/home/j/.openclaw/workspace/state/status/activity.json', 'utf8');
+      const d = JSON.parse(raw);
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify(d));
+    } catch (e) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ kind: 'idle', phase: '正常', percent: null }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/gw') {
+    const t0 = Date.now();
+    if (require('fs').existsSync('/home/j/.openclaw/workspace/state/status/.gw-force-down')) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, forced: true }));
+      return;
+    }
+    const req = require('http').get({ host: '127.0.0.1', port: 18789, path: '/health', timeout: 3000 }, (r) => {
+      let b = ''; r.on('data', (c) => b += c);
+      r.on('end', () => {
+        let ok = r.statusCode === 200;
+        try { const j = JSON.parse(b); if (j && j.ok === false) ok = false; } catch (e) {}
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ ok, status: r.statusCode, ms: Date.now() - t0 }));
+      });
+    });
+    req.on('timeout', () => { req.destroy(); });
+    req.on('error', (e) => {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: String(e.code || e.message) }));
+    });
+    return;
+  }
   if (url.pathname === '/api/health-summary') {
     const now0 = Date.now();
     if (HEALTH_SUM_C && now0 - HEALTH_SUM_C.t < 3000) { res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(HEALTH_SUM_C.body); return; }
@@ -2023,6 +2104,7 @@ const server = http.createServer(async (req, res) => {
     const pickN = (re) => (nc.nodes || []).find(n => re.test(String(n.displayName || ''))) || null;
     const nb = pickN(/mypc|b机/i) || (nc.nodes || [])[0] || null;
     const ncv = pickN(/c-library|c机/i);
+    const ndv = pickN(/d-library|d机/i);
     const mk = (n) => n ? { name: n.displayName || '', ip: n.remoteIp || '', plat: n.platform || '', ver: n.version || '',
         memT: (n.hostStats || {}).memoryTotalBytes || 0, memA: (n.hostStats || {}).memoryFreeBytes || 0,
         diskA: (n.hostStats || {}).diskAvailableBytes || 0, diskT: (n.hostStats || {}).diskTotalBytes || 0,
@@ -2031,10 +2113,12 @@ const server = http.createServer(async (req, res) => {
     try { const ni = osM.networkInterfaces(); for (const k of Object.keys(ni)) { if (sip) break; for (const a of ni[k] || []) { if (a.family === 'IPv4' && !a.internal) { sip = a.address; break; } } } } catch (e) {}
     let memT = 0, memA = 0;
     try { const mi = fs.readFileSync('/proc/meminfo', 'utf8'); const gg = (n) => { const m = new RegExp(n + ':\\s+(\\d+) kB').exec(mi); return m ? Number(m[1]) * 1024 : 0; }; memT = gg('MemTotal'); memA = gg('MemAvailable'); } catch (e) {}
+    out.nas = NAS_STAT;
     out.machines = { a: { name: osM.hostname() || 'A机', ip: sip || '', plat: 'linux', ver: process.version, memT: memT, memA: memA, diskA: 0 },
-      b: mk(nb), c: mk(ncv) };
+      b: mk(nb), c: mk(ncv), d: mk(ndv) };
     out.b = { on: !!(nb && nb.connected), seen: nb ? Math.max(nb.lastSeenAtMs || 0, (nb.hostStats || {}).updatedAtMs || 0) : 0, onlinePct: day.length ? Math.round(100 * bOn / day.length) : null, drops: drops };
     out.c = { on: !!(ncv && ncv.connected), seen: ncv ? Math.max(ncv.lastSeenAtMs || 0, (ncv.hostStats || {}).updatedAtMs || 0) : 0 };
+    out.d = { on: !!(ndv && ndv.connected), seen: ndv ? Math.max(ndv.lastSeenAtMs || 0, (ndv.hostStats || {}).updatedAtMs || 0) : 0, configured: !!ndv };
     const body = JSON.stringify(out);
     HEALTH_SUM_C = (ncv || nb) ? { t: Date.now(), body: body } : { t: 0, body: null };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });

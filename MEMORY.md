@@ -98,15 +98,9 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 - **语义记忆检索已启用（2026-11-07）**：memory.search=ollama/nomic-embed-text（768 维）。注意 127.0.0.1:11434 是 ollama-proxy 转发到 **B 机 192.168.1.107**，向量实际在 B 机算（面板显示 B 机是对的）；A 机 11435 另装了同名模型作冷备，但索引是用 B 的权重建的，切 A 必须整库重嵌（需离线窗口）。索引 docs/ + state/tasks/ + 记忆文件；用法 `openclaw memory search "按意思描述" --agent main`。向量索引是派生物，丢了重建即可，不是备份。
 
 <!-- BUTLER-DIGEST:BEGIN -->
-### 跨管家周摘要 2026-W45（自动生成，只读指针）
-- backup-drill.sh:28 全量 tar tzf 420s 超时 → 误报 SOUL/AGENTS/IDENTITY/memory 四项缺失，日报仍 exit 0（假绿）（summary-20261105.md:27）
-- 影响：备份落地/回收站水位/日志异味/会话健康四项夜间监控名义上线、实际空转，形成"假绿"。（maint-2026-11-02.md:39）
-- 脚本本身发送段是干净的：tools/maint-boot-notice.sh:182-193 有 rc=$? 判定、失败写 fails 并 exit 4，不是假绿源头（maint-2026-11-05.md:28）
-- 根因：待确认（缺第三证，不猜）。两种可能：①safeBins 只接受不带参数的裸命令，ls/df/grep 缺 flags/args 的 profile；②Code Mode 桥接层在 agent 策略之前先拦，只放行极（maint-2026-11-01.md:26）
-- 盘位体检 07:51：55 分钟超时，根因群晖不可达（backup 自检同样报「异地不可达」）（summary-20261104.md:19）
-- 建议动作：① 修订 WORK 文档三处引用/时间；② 同步 line 155 修正回 v6 副本（或删 v6 副本、以 .v5.bak 留底）并更正正式版头注释。均属文本级低风险改动，走 P2 流程（24h 未批复默认批（maint-2026-11-02.md:53）
-- 判定口径：当日产出文件数 + 证据密度（file:line / rc= / exit code / 哈希 / 工具调用）。（acceptance-20261101.md:26）
-全文：state/briefs/butler-weekly-2026-W45.md
+### 跨管家周摘要 2026-W46（自动生成，只读指针）
+- 判定口径：当日产出文件数 + 证据密度（file:line / rc= / exit code / 哈希 / 工具调用）。（acceptance-20261106.md:24）
+全文：state/briefs/butler-weekly-2026-W46.md
 <!-- BUTLER-DIGEST:END -->
 - 主公手册（2026-11-10 立）：docs/主公手册-20261110.md，调用 `bash tools/manual.sh [list|节号|关键词]`；工作模式=完成即顺延（plan-reflow 1 分钟间隔）
 - 体积体检（2026-11-10 立，主公令）：每次体检必带体积/文件扫描。tools/space-audit.py（零 token/只读/1.5s，落 state/disk/latest.json + history.jsonl），已挂 20:30 简报「▍体积」与每日 03:47 四盘清理尾部；判定线 P0 盘≥90%、P1 盘≥85%/回收站≥100G/残包≥10G/膨胀≥125%。规则 docs/体积体检与空间清理-20261110.md
