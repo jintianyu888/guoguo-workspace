@@ -242,6 +242,7 @@ async function refreshWeather(maxAgeMs = 600000) {
   return inflight.weather;
 }
 
+let BT_C = null;
 const CACHE = { status: null, statusAt: 0, cron: null, cronAt: 0, sess: null, sessAt: 0, host: null, hostAt: 0 };
 const PS = process.env.INFOWIN_PS || '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
 const PS1 = process.env.INFOWIN_PS1 || '\\\\wsl.localhost\\Ubuntu\\home\\j\\openclaw-workspaces\\work\\果果助手\\host-metrics.ps1';
@@ -387,13 +388,13 @@ async function refreshHost(maxAgeMs) {
   return inflight.host;
 }
 
-async function refresh(key, args, maxAgeMs) {
+async function refresh(key, args, maxAgeMs, timeoutMs) {
   const now = Date.now();
   const at = key + 'At';
   if (now - CACHE[at] < maxAgeMs) return;
   if (inflight[key]) return inflight[key];
   inflight[key] = (async () => {
-  const r = await runCli(args, 10000);
+  const r = await runCli(args, timeoutMs || 10000);
   inflight[key] = null;
   CACHE[at] = Date.now();
   if (r.ok) { CACHE[key] = r.data; delete ERR[key]; }
@@ -1460,15 +1461,16 @@ async function refreshAll() {
   // （实测 3 个/15 秒 ≈ 16GB/小时，vhdx 膨胀元凶）。没人看面板时完全不必跑。
   if (Date.now() - LAST_REQ_AT < 90000) {   // 只在面板确实被访问时才拉 CLI
     await Promise.all([
-      refresh('cron', ['cron', 'list', '--json'], 300000),
-      refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 300000),
-      refresh('status', ['status', '--json'], 300000),
-      refresh('agents', ['agents', 'list', '--json'], 300000)
+      refresh('cron', ['cron', 'list', '--json'], 300000, 30000),
+      refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 300000, 30000),
+      refresh('status', ['status', '--json'], 300000, 30000),
+      refresh('agents', ['agents', 'list', '--json'], 300000, 30000)
     ]);
   }
 }
 
 const LEDGER_FILE = '/home/j/.openclaw/workspace/state/tasks/tasks.json';
+let TICKER_C = null;
 const LEDGER_DB = '/home/j/.openclaw/workspace/state/tasks/tasks.db';
 let LEDGER = null, LEDGER_MT = 0;
 function loadLedger() {
@@ -2046,6 +2048,188 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/panel/gpu-note') {
+    try { fs.appendFileSync('/home/j/.openclaw/workspace/state/panel-fs.log', new Date().toISOString() + ' gpu=' + decodeURIComponent(url.searchParams.get('r')||'') + '\n'); } catch(e) {}
+    res.writeHead(204); res.end();
+    return;
+  }
+  if (url.pathname === '/api/panel/fullscreen-exit-note') {
+    try { fs.appendFileSync('/home/j/.openclaw/workspace/state/panel-fs.log', new Date().toISOString() + ' fullscreenchange ' + (url.searchParams.get('state')||'?') + '\n'); } catch(e) {}
+    res.writeHead(204); res.end();
+    return;
+  }
+  if (url.pathname === '/api/panel/fullscreen-enter') {
+    execFile('/mnt/c/Users/J/AppData/Local/GuoguoPanel/toggle-fs.exe', ['toggle'], { timeout: 4000 }, function (err) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: !err }));
+    });
+    return;
+  }
+  if (url.pathname === '/api/panel/fullscreen-exit') {
+    try { fs.appendFileSync('/home/j/.openclaw/workspace/state/panel-fs.log', new Date().toISOString() + ' exit-fs called ref=' + (req.headers.referer||'-') + ' ua=' + String(req.headers['user-agent']||'').slice(0,40) + '\n'); } catch(e) {}
+    /* 让 Windows 侧小工具给面板窗口发 F11 并取消置顶（JS 无法退出浏览器级全屏） */
+    execFile('/mnt/c/Users/J/AppData/Local/GuoguoPanel/toggle-fs.exe', [], { timeout: 4000 }, function (err) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: !err, err: err ? String(err.message || err) : null }));
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/butler-todos') {
+    const now = Date.now();
+    if (!BT_C || now - BT_C.t > 20000) {
+      const BUTLERS = [
+        { id: 'maint', name: '维护', alias: ['maint'] },
+        { id: 'backup', name: '备份', alias: ['backup'] },
+        { id: 'model', name: '模型', alias: ['model'] },
+        { id: 'work', name: '干活', alias: ['work'] },
+        { id: 'sheet-music', name: 'Hermess', alias: ['sheet-music', 'hermess'] }
+      ];
+      const SMAP = { in_progress: 'doing', pending: 'todo', paused: 'wait', blocked: 'blocked', doing: 'doing', todo: 'todo', wait: 'wait', err: 'blocked' };
+      let manual = { butlers: [] };
+      try { manual = JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'butler-todos.json'), 'utf8')); } catch (e) {}
+      const manBy = {};
+      (manual.butlers || []).forEach(b => { manBy[b.id] = (b.items || []).filter(i => i.status !== 'done'); });
+      let rows = [];
+      try {
+        const { DatabaseSync } = require('node:sqlite');
+        const db = new DatabaseSync(LEDGER_DB, { readOnly: true });
+        rows = db.prepare("select no,title,status,updated,agent from tasks where status not in ('done','cancelled') order by updated desc limit 300").all();
+      } catch (e) {}
+      const byAgent = {};
+      rows.forEach(r => { const k = String(r.agent || ''); (byAgent[k] = byAgent[k] || []).push(r); });
+      /* 最近会话活动（15 分钟内） */
+      const act = {};
+      ((CACHE.sess && CACHE.sess.sessions) || []).forEach(se => {
+        const mm = /^agent:([^:]+)/.exec(String(se.key || ''));
+        if (!mm) return;
+        const age = (typeof se.ageMs === 'number') ? se.ageMs : 1e12;
+        if (age > 15 * 60000) return;
+        if (!(mm[1] in act) || age < act[mm[1]]) act[mm[1]] = age;
+      });
+      const butlers = BUTLERS.map(b => {
+        const items = [];
+        (manBy[b.id] || []).forEach(i => {
+          const t = Date.parse(String(i.updated || '').replace(' ', 'T'));
+          const days = isFinite(t) ? (Date.now() - t) / 86400000 : 99;
+          if (days > 7) return;                      /* v3.9.185 超 7 天的旧登记不再显示 */
+          items.push({ text: i.text, status: SMAP[i.status] || 'todo', updated: i.updated || '', src: '登记' });
+        });
+        b.alias.forEach(id => (byAgent[id] || []).forEach(t => {
+          if (items.length >= 6) return;
+          items.push({ text: '#' + t.no + ' ' + String(t.title || '').slice(0, 48), status: SMAP[t.status] || 'todo', updated: t.updated || '', src: '账本' });
+        }));
+        if (!items.length) {
+          const ag = Math.min.apply(null, b.alias.map(id => (id in act ? act[id] : 1e12)).concat([1e12]));
+          if (ag < 15 * 60000) items.push({ text: '近期有会话活动 · ' + (ag < 60000 ? '刚刚' : Math.round(ag / 60000) + ' 分钟前'), status: 'doing', updated: new Date().toISOString(), src: '活动' });
+          else items.push({ text: '无登记任务 · 近期无活动', status: 'idle', updated: '', src: '—' });
+        }
+        return { id: b.id, name: b.name, items };
+      });
+      /* v3.9.188 五大管家今日自审状态（来源 state/butler/today.json，tools/butler-daily.py 生成） */
+      try {
+        const bd = JSON.parse(fs.readFileSync('/home/j/.openclaw/workspace/state/butler/today.json', 'utf8'));
+        (bd.butlers || []).forEach(x => {
+          const b = butlers.find(y => y.id === x.id);
+          if (!b) return;
+          let txt = '';
+          if (x.review_today) txt = '今日自审已完成 · 产出 ' + x.review_size + ' 字节';
+          else if (x.next_run) txt = '今日自审待运行 · ' + x.next_run + (x.last_status ? '（上次 ' + x.last_run + ' ' + x.last_status + '）' : '');
+          else txt = '未配置每日自审';
+          if (!x.review_today && x.review_latest) txt += ' · 最近产出 ' + x.review_latest;
+          b.items.unshift({ text: txt, status: x.review_today ? 'done' : 'todo', updated: bd.updated || '', src: '自审' });
+        });
+      } catch (e) {}
+      const body = JSON.stringify({ updated: new Date().toISOString(), src: 'tasks.db + 登记 + 会话活动', butlers });
+      BT_C = { t: now, body };
+    }
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(BT_C.body);
+    return;
+  }
+  if (url.pathname === '/api/ticker') {
+    const now = Date.now();
+    if (TICKER_C && now - TICKER_C.t < 30000) { res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(TICKER_C.body); return; }
+    const out = { ts: now };
+    try {
+      const h = CACHE.host || {};
+      out.cpu = h.cpu; out.memUsed = h.memUsedGB; out.memTotal = h.memTotalGB;
+      out.gpuTemp = h.gpu && h.gpu.tempC; out.gpuUtil = h.gpu && h.gpu.util;
+      out.disks = (h.disks || []).slice(0, 3).map(d => ({ m: d.mount, f: Math.round(d.freeGB) }));
+    } catch (e) {}
+    try {
+      const { DatabaseSync } = require('node:sqlite');
+      const db = new DatabaseSync(LEDGER_DB, { readOnly: true });
+      const t = new Date(); const day = t.toISOString().slice(0, 10);
+      const q = (sql) => { try { return db.prepare(sql).get(); } catch (e) { return {}; } };
+      const open = q("select count(*) c from tasks where status in ('pending','in_progress')");
+      const today = q("select count(*) c from tasks where status='done' and substr(updated,1,10)=date('now','localtime')");
+      const wait = q("select count(*) c from tasks where status='paused' and wait_user=1");
+      out.open = open.c || 0; out.doneToday = today.c || 0; out.waitUser = wait.c || 0;
+      db.close();
+    } catch (e) { out.dbErr = String(e.message || e).slice(0, 60); }
+    try {
+      const fs = require('fs');
+      const p = '/home/j/.openclaw/workspace/state/alerts/alerts.jsonl';
+      const day = new Date().toISOString().slice(0, 10);
+      const lines = fs.readFileSync(p, 'utf8').trim().split('\n').slice(-400);
+      out.alertsToday = lines.filter(l => l.indexOf(day) >= 0).length;
+    } catch (e) {}
+    try {
+      /* v3.9.159 活跃管家 + 下一个计划任务，喂底部跑马灯 */
+      const AG_NAMES = (() => {
+        const now2 = Date.now();
+        if (global.__AGN && now2 - global.__AGN.t < 600000) return global.__AGN.m;
+        const m = {};
+        try {
+          const cfg = JSON.parse(fs.readFileSync('/home/j/.openclaw/openclaw.json', 'utf8'));
+          const en = (cfg.agents && cfg.agents.entries) || {};
+          for (const k of Object.keys(en)) m[k] = (en[k] && (en[k].name || en[k].displayName)) || k;
+        } catch (e) {}
+        global.__AGN = { t: now2, m };
+        return m;
+      })();
+      const sessions = (CACHE.sess && CACHE.sess.sessions) || [];
+      const act = {};
+      sessions.forEach(se => {
+        const key = String(se.key || '');
+        const mm = /^agent:([^:]+)/.exec(key);
+        if (!mm) return;
+        const id = mm[1];
+        const age = (typeof se.ageMs === 'number') ? se.ageMs : (se.updatedAt ? Date.now() - se.updatedAt : 1e12);
+        if (age > 15 * 60000) return;
+        if (!act[id] || age < act[id].age) act[id] = { id, name: AG_NAMES[id] || id, age, status: se.status || '' };
+      });
+      out.agents = Object.values(act).sort((x, y) => x.age - y.age).slice(0, 4)
+        .map(x => ({ n: x.name, a: Math.round(x.age / 60000), st: (x.status === 'running' || x.status === 'streaming' || x.age < 60000) ? 1 : 0 }));
+      const jobs = (CACHE.cron && CACHE.cron.jobs) || [];
+      const up = jobs.map(j => ({
+        name: j.name || '未命名任务',
+        at: j.nextRunAtMs || (j.state && j.state.nextRunAtMs) || 0,
+        agent: j.effectiveAgentId || j.agentId || 'main',
+        enabled: j.enabled !== false,
+        running: (j.status || (j.state && j.state.status)) === 'running'
+      })).filter(j => j.enabled && j.at > Date.now()).sort((x, y) => x.at - y.at);
+      if (up.length) {
+        out.nextJob = up[0].name;
+        out.nextJobMin = Math.max(0, Math.round((up[0].at - Date.now()) / 60000));
+        out.nextJobAgent = AG_NAMES[up[0].agent] || up[0].agent;
+      }
+      const runJob = jobs.filter(j => (j.status || (j.state && j.state.status)) === 'running');
+      if (runJob.length) out.runningJobs = runJob.slice(0, 2).map(j => j.name || '未命名任务');
+    } catch (e) {}
+    try {
+      const d = new Date(); const m = d.getHours() * 60 + d.getMinutes();
+      out.nextBackupMin = m < 60 ? (60 - m) : (1440 - m + 60);
+      out.nextRestartMin = m < 480 ? (480 - m) : (1440 - m + 480);
+      out.now = d.toLocaleTimeString('zh-CN');
+    } catch (e) {}
+    const body = JSON.stringify(out);
+    TICKER_C = { t: now, body };
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(body);
+    return;
+  }
   if (url.pathname === '/api/gw') {
     const t0 = Date.now();
     if (require('fs').existsSync('/home/j/.openclaw/workspace/state/status/.gw-force-down')) {
@@ -2403,6 +2587,16 @@ function upgradeBlockers(){
         LOGTAIL_C = { t: Date.now(), lines };
         reply(lines);
       });
+  }
+  if (url.pathname === '/api/monitor') {
+    const mode = url.searchParams.get('mode') === 'on' ? 'on' : 'off';
+    const psExe = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
+    try { fs.appendFileSync(path.join(__dirname, 'state-monitor.log'), new Date().toISOString() + ' ' + mode + String.fromCharCode(10)); } catch (e) {}
+    execFile(psExe, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'C:' + String.fromCharCode(92) + 'tools' + String.fromCharCode(92) + 'oc-monitor.ps1', '-mode', mode], { cwd: '/mnt/c', timeout: 12000 }, (err, stdout, stderr) => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: !err, mode: mode, out: String(stdout || '').trim().slice(0, 120), err: err ? String(err.message || err).slice(0, 200) : null }));
+    });
+    return;
   }
   if (url.pathname === '/api/presence') {
     const onQ = url.searchParams.get('on');

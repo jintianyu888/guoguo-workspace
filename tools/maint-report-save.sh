@@ -5,6 +5,10 @@ set -uo pipefail
 NAME="${1:-}"
 printf '%s' "$NAME" | grep -qE '^[a-z0-9][a-z0-9-]{0,39}$' || { echo "ERR: 名称只允许小写字母数字与短横线" >&2; exit 2; }
 DIR=/home/j/.openclaw/workspace/state/maint
+# 2026-11-14: 名称以 self-review- 开头时改落自己的工作区自审目录（供 butler-task-sync 解析）
+case "$NAME" in
+  self-review-*) DIR=/home/j/openclaw-workspaces/maint/state/self-review ;;
+esac
 mkdir -p "$DIR" || exit 3
 OUT="$DIR/$NAME.md"
 TMP=$(mktemp "$DIR/.tmp.XXXXXX") || exit 3

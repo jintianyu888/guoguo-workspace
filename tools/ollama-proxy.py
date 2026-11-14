@@ -154,6 +154,136 @@ def discover():
 LOCAL_PORT = int(os.environ.get("OLLAMA_LOCAL_PORT", "11435"))
 UP = {"host": None}
 
+
+# ==== GPU 闸门 (2026-11-14 20:55, 主公令：让它们排队，别一起把 WSL 拖死) ====
+# 目的：A(本机模型调用) 与 B(影视助手字幕翻译) 共用一个 ollama/GPU 时，
+#       不允许无上限并发把上游和本机内存一起压爆。
+# 行为：并发上限 GATE_MAX；排队超过 GATE_QUEUE 直接 503（上层会自动降级到云端模型）。
+import threading as _th
+GATE_MAX = int(os.environ.get("OLLAMA_GATE_MAX", "2"))
+GATE_QUEUE = int(os.environ.get("OLLAMA_GATE_QUEUE", "4"))
+GATE_WAIT = float(os.environ.get("OLLAMA_GATE_WAIT", "15"))
+KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "5m")
+_sem = _th.BoundedSemaphore(GATE_MAX)
+_gate = {"waiting": 0, "queued": 0, "busy_rejects": 0, "passed": 0}
+_gate_lock = _th.Lock()
+# 只有真正吃显存的路径才占闸
+_HEAVY = ("/api/generate", "/api/chat", "/api/embed", "/api/embeddings")
+
+def _gate_stats_reply(self):
+    with _gate_lock:
+        d = dict(_gate); d["max"] = GATE_MAX; d["queue"] = GATE_QUEUE
+    body = json.dumps(d).encode()
+    self.send_response(200)
+    self.send_header("Content-Type", "application/json")
+    self.send_header("Content-Length", str(len(body)))
+    self.end_headers()
+    self.wfile.write(body)
+
+def _gate_acquire(self, method):
+    """返回 'bypass' / 'held' / None(已拒绝)"""
+    path = (self.path or "").split("?")[0]
+    if path == "/__gate_stats":
+        _gate_stats_reply(self); return None
+    if method not in ("POST", "DELETE") or not any(path.endswith(h) for h in _HEAVY):
+        return "bypass"
+    with _gate_lock:
+        if _gate["waiting"] >= GATE_QUEUE:
+            _gate["busy_rejects"] += 1
+            body = json.dumps({"error": "gpu-gate: queue full (%d waiting, %d running), retry later" % (_gate["waiting"], GATE_MAX)}).encode()
+            self.send_response(503)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Retry-After", "20")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+            return None
+        _gate["waiting"] += 1
+    got = _sem.acquire(timeout=GATE_WAIT)
+    with _gate_lock:
+        _gate["waiting"] -= 1
+        if got: _gate["queued"] += 1
+        else:   _gate["busy_rejects"] += 1
+    if not got:
+        body = json.dumps({"error": "gpu-gate: timed out after %ss" % GATE_WAIT}).encode()
+        self.send_response(503)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Retry-After", "20")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers(); self.wfile.write(body)
+        return None
+    return "held"
+
+def _gate_maybe_keep_alive(self, body):
+    """给 A 的请求补 keep_alive，避免长期霸占 B 的显存"""
+    if not body or not KEEP_ALIVE: return body
+    try:
+        j = json.loads(body.decode("utf-8"))
+    except Exception:
+        return body
+    if not isinstance(j, dict) or "keep_alive" in j: return body
+    j["keep_alive"] = KEEP_ALIVE
+    return json.dumps(j).encode()
+
+
+# ==== 显存互斥保护 (2026-11-14 21:00)：别让 A 的请求把 B 上的大模型(影视助手用)挤出去 ====
+# 如果上游已驻留一个 >10GB 的模型且与本次请求的模型不同，直接 503，让调用方走云端降级，
+# 避免 12GB 级模型来回换进换出（那才是把机器拖死的真凶）。
+import urllib.request as _ur
+PS_GUARD = os.environ.get("OLLAMA_PS_GUARD", "1") == "1"
+PS_BIG_KB = int(os.environ.get("OLLAMA_PS_BIG_KB", str(10 * 1024 * 1024)))
+_ps_cache = {"ts": 0.0, "data": None}
+
+def _upstream_ps(host):
+    if time.time() - _ps_cache["ts"] < 15:
+        return _ps_cache["data"]
+    ent = None
+    if isinstance(host, str):
+        url = "http://%s:11434/api/ps" % host
+    elif isinstance(host, dict) and not host.get("local"):
+        url = "http://%s:%d/api/ps" % (host["ip"], int(host.get("port", 11434)))
+    elif isinstance(host, tuple):
+        url = "http://%s:%d/api/ps" % (host[0], int(host[1]))
+    else:
+        return None
+    try:
+        with _ur.urlopen(url, timeout=3) as r:
+            ent = json.loads(r.read().decode("utf-8", "ignore")).get("models", [])
+    except Exception:
+        ent = None
+    _ps_cache["ts"] = time.time()
+    _ps_cache["data"] = ent
+    return ent
+
+def _ps_guard(self, path, body, host):
+    if not PS_GUARD or not body:
+        return True
+    if not (path.endswith("/api/generate") or path.endswith("/api/chat")):
+        return True
+    try:
+        req = json.loads(body.decode("utf-8"))
+        want = (req.get("model") or "").strip()
+    except Exception:
+        return True
+    if not want:
+        return True
+    ent = _upstream_ps(host)
+    if not ent:
+        return True
+    for m in ent:
+        name = m.get("name") or m.get("model") or ""
+        size = int(m.get("size") or 0)
+        if size >= PS_BIG_KB and name and name.split(":")[0] != want.split(":")[0]:
+            msg = {"error": "gpu-busy: upstream holds %s (%.1fGB) for another app; refusing to evict" % (name, size / 1073741824.0)}
+            data = json.dumps(msg).encode()
+            self.send_response(503)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Retry-After", "60")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers(); self.wfile.write(data)
+            log("ps-guard 拒绝 %s：上游已驻留 %s(%.1fGB)" % (want, name, size / 1073741824.0))
+            return False
+    return True
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "ollama-proxy/1"
@@ -174,8 +304,21 @@ class H(BaseHTTPRequestHandler):
         return UP["host"]
 
     def _do(self, method):
+        verdict = _gate_acquire(self, method)
+        if verdict is None:
+            return
+        try:
+            self._do_inner(method)
+        finally:
+            if verdict == 'held':
+                _sem.release()
+
+    def _do_inner(self, method):
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n) if n else None
+        body = _gate_maybe_keep_alive(self, body)
+        if not _ps_guard(self, (self.path or "").split("?")[0], body, self._upstream()):
+            return
         headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP_HEADERS}
         last = None
         for attempt in (0, 1):

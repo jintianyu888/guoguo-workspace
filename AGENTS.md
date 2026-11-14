@@ -98,6 +98,15 @@
 - 20:30 简报出现「▍技能 · 待优化」时当天必须改技能；45 天未使用的技能提退休，重叠技能合并。
 - **自动维护（2026-11-10 主公令）**：`oc-skill-maintain.timer` 每日 21:10 零 token 跑 `tools/skill-maintain.py` —— 镜像主本→副本、给新技能补通用自检、lint 体检、跑 `selftest.sh` 实测、只报新增问题（周日附周报）。技能目录放 `selftest.sh`（rc=0 才算真能用，≤45 秒），未覆盖的每周补 2 个。细则 docs/技能自动维护-20261110.md。
 
+## 技能沉淀（2026-11-14 主公令·加严）
+- **成型即沉淀，不再事后补**：任何一次「交付了可复用成果」（部署/新脚本/新流程/故障处置/配置体系/对外能力）当轮就必须落成技能，做不到就在工作日志里写明「为什么不沉淀」。
+- 判定「成型」的三条：①别人（或三个月后的我）能照文档重做；②有可验证的验收命令；③有回滚方式。三条缺一，先补再发。
+- 每周日 19:40 零 token 跑 `python3 tools/skill-coverage.py --since 7` 自检：近 7 天 deploy/change/fix/incident 条目与共享技能做覆盖比对，缺口写 `state/skills/coverage-latest.txt`；缺口 ≥5 条时当周必须补，不许拖到下周。
+- **生命周期（2026-11-14 借鉴 Hermes curator 定）**：技能 14 天未用标 stale（进本周待优化），30 天未用归档到 `shared-skills/.archived/`（只移不删，可恢复）；`state/skills/pins.json` 里的技能永久豁免；每周日 19:45 `oc-skill-curator.timer` 自动跑。
+- **每日候选捕获**：22:15 `oc-skill-capture.timer` 生成 `state/skills/capture-queue.md`（近 3 天未沉淀的成型成果），第二天开工先照单补 1-2 条。
+- **写法约束**：SKILL.md ≤200 行、可扫读；大材料进 `references/`、脚本进 `scripts/`；不写只指向别的技能的「路由技能」；有近义技能就补旧的，不新建重复。
+- 主公 2026-11-14 明确：「以后所有成型的成果都要做成技能」，且认可本轮 voice-clone-tts 的写法（什么时候用/前置条件/步骤/验证/坑/回滚/来源 七段式）作为模板。
+
 ## 自有队列上限（2026-11-10 主公问询后立 · 硬性）
 - 我的未结任务**上限 6 条**（pending + in_progress）。要新增，先关掉/合并/冻结一条，不许把队列越排越长。
 - 四类不进队列，只记文字不进账本：①等主公动作的（等权限/等时间/等拍板时用 paused + wait_user）②周期性日常（cron 已经管）③未来架构债（写成 docs 备查）④已判定降级或冻结的。
@@ -201,3 +210,8 @@
 COMMON:END -->
 - **周末清账铁律（2026-11-07 主公令）**：除「等主公动手」与「周期性/计分」两类，所有任务必须周日 23:00 前做完并机器核验；工具 tools/weekend-clear.py，细则 docs/任务账本统一规则-20261107.md
 - **任务账本统一规则（2026-11-07 主公令）**：唯一真源 state/tasks/tasks.db；旧 ledger.db / pending-tasks.md / peak-queue.md 已冻结只读；汇报只有三口径（完成即报、三段简报、异常才响），细则见 docs/任务账本统一规则-20261107.md
+
+## 机器代号（2026-11-14 主公令 · 全局）
+- 唯一真源：docs/机器账本-20261114.md。A=果果主机(WSL GY,LAN 192.168.1.108)、B=MyPC-Node(.107)、C=C-Library(媒体库, .106)、D=D-Laptop、E=老Win7、NAS=群晖(.109)。
+- 汇报/日志/文档一律写代号；「MyPC」=B 机，「library/库房/仓库PC」=C 机；节点名稳定、IP 会漂。
+- 共享技能：machine-registry、archive-extract（7zz 7z/rar/zip）、office-doc-read（docx/xlsx/pptx/pdf）。

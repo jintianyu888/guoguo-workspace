@@ -45,6 +45,14 @@ DEFAULT_BASE = {
     "quiet_hours": ["04:00", "06:00"],
 }
 
+def load_noise():
+    p = os.path.join(W, 'state', 'expected-noise.json')
+    try:
+        return json.load(open(p, encoding='utf-8'))
+    except Exception:
+        return {}
+
+
 def load_base():
     try:
         d = json.load(open(BASE, encoding="utf-8"))
@@ -55,9 +63,14 @@ def load_base():
         return dict(DEFAULT_BASE)
 
 def norm(s):
-    s = re.sub(r"\d{4}-\d{2}-\d{2}T[\d:.+\-]+", "", s)
+    s = re.sub(r"\d{4}-\d{2}-\d{2}T[\d:.+\-]+", "<ts>", s)
     s = re.sub(r"\b[0-9a-f]{8}-[0-9a-f-]{8,}\b", "<id>", s)
-    s = re.sub(r"\d+", "N", s)
+    s = re.sub(r"\b[0-9a-f]{16,}\b", "<hex>", s)
+    s = re.sub(r"https?://\S+", "<url>", s)
+    s = re.sub(r"ou_[0-9a-f]+", "<openid>", s)
+    s = re.sub(r"cli_[0-9a-f]+", "<appid>", s)
+    s = re.sub(r"\b(peer|sessionKey|sessionId|runId|agentId|userId|chatId|messageId)=\S+", r"\1=<v>", s)
+    s = re.sub(r"\b\d+(\.\d+)?\b", "N", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s[:180]
 
@@ -82,6 +95,11 @@ def collect(unit, hours):
             continue
         if not re.search(r"(error|fatal|timeout|failed|异常|🔴|❌)", msg, re.I):
             continue
+        # stack frames / object dumps are continuation lines, not separate faults
+        if re.match(r"^\s+(at |_timeout|_currentUrl|_redirectCount|_options|_maxRedirects|_ended|_events|_idleTimeout)", msg) or re.match(r"^\s*[\]},]", msg):
+            continue
+        if re.match(r"^\s*(error: \[Object\]|stack:|cause:|code:|errno:|syscall:|address:|port:)", msg):
+            continue
         h = "??"
         try:
             us = int(j.get("__REALTIME_TIMESTAMP", 0)) / 1e6
@@ -99,8 +117,11 @@ def main():
     a = ap.parse_args()
 
     base = load_base()
+    noise = load_noise()
     sigs = [re.compile(p, re.I) for p in base["signatures"]]
-    qa, qb = base["quiet_hours"]
+    sigs += [re.compile(p, re.I) for p in noise.get("always_signatures", [])]
+    never = [re.compile(p, re.I) for p in noise.get("never_noise", [])]
+    windows = noise.get("windows") or [{"from": base["quiet_hours"][0], "to": base["quiet_hours"][1], "reason": "quiet"}]
 
     recs = collect(a.unit, a.hours)
     by_sig, by_hour = {}, {}
@@ -110,11 +131,20 @@ def main():
         d["n"] += 1
         d["hours"].add(h)
 
+    def in_window(h):
+        hh = str(h)[:2]
+        for w in windows:
+            if w["from"][:2] <= hh <= w["to"][:2]:
+                return w
+        return None
+
     def expected(entry):
+        if any(s.search(entry["full"]) for s in never):
+            return False
         if any(s.search(entry["full"]) for s in sigs):
             return True
         hs = [x for x in entry["hours"] if x != "??"]
-        return bool(hs) and all(qa[:2] <= x <= qb[:2] for x in hs)
+        return bool(hs) and all(in_window(x) for x in hs)
 
     exp_n = new_n = 0
     new = {}

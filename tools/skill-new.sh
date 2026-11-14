@@ -44,6 +44,11 @@ case "$cmd" in
 ---
 name: $name
 description: $desc
+version: 1.0.0
+updated: $(date +%Y-%m-%d)
+tags: []
+platforms: [linux]
+related_skills: []
 ---
 
 # $name
@@ -77,6 +82,11 @@ description: $desc
 ## 来源
 
 （哪天、为哪件事沉淀）
+
+<!-- 写法约束（借鉴 Hermes 技能标准）：
+     SKILL.md 控制在 200 行内、可扫读；大段材料/长代码不放正文，放同级 references/ 或 scripts/，
+     正文只留索引和用法。别写只指向别的技能的“路由技能”。
+     已有近义技能就补旧的，不新建重复技能。 -->
 EOF
     echo "骨架已生成：$dir/SKILL.md"
     echo "填完正文后：bash tools/skill-new.sh --publish $name"

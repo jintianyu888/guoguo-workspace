@@ -28,13 +28,24 @@ HM=${NOW##* }
 now_min=$(( 10#${HM%%:*} * 60 + 10#${HM##*:} ))
 
 # 该档是否已经成功推送过（日志里有 "== <日期> <档>:00 开始" 且其后有 "推送 rc=0"）
+# 2026-11-14：补跑时 push 日志头写的是「实际开跑时刻」而非档位时刻，原实现按
+# "^== 日期 档位:00 开始" 精确匹配，导致补跑完成后下一 tick 仍判「漏档」→ 再补一遍
+# （2026-11-14 早 08:30、08:40 各推一次，主公收到两份）。改为窗口匹配。
 slot_done() {
   local slot="$1"
   [ -f "$LOG" ] || return 1
-  awk -v d="$TODAY" -v s="$slot" '
-    $0 ~ ("^== " d " " s ":00 开始") { blk=1; next }
-    blk && /^== / { blk=0 }
-    blk && /推送 rc=0/ { ok=1 }
+  awk -v d="$TODAY" -v s="$slot" -v w="$WINDOW_MIN" '
+    function mins(t,   a) { split(t, a, ":"); return a[1]*60 + a[2] }
+    BEGIN { sm = mins(s) }
+    /^== / {
+      blk = 0
+      if ($2 == d && $3 ~ /^[0-9][0-9]:[0-9][0-9]:[0-9][0-9]$/) {
+        m = mins(substr($3, 1, 5))
+        if (m >= sm && m < sm + w) blk = 1
+      }
+      next
+    }
+    blk && /推送 rc=0/ { ok = 1 }
     END { exit(ok ? 0 : 1) }
   ' "$LOG"
 }

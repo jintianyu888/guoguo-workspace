@@ -59,7 +59,18 @@ else
 fi
 HH=$(date +%H)
 if [ "$FORCE" = "0" ] && { [ "$HH" = "04" ] || [ "$HH" = "05" ]; }; then FAIL="$FAIL quiet_window"; fi
-if [ "$FORCE" = "0" ] && pgrep -f "backup-(tier1-critical|archive|mirror-verify)|backup-with-quiet" >/dev/null 2>&1; then FAIL="$FAIL backup_running"; fi
+# 2026-11-14 fix: pgrep -f matched unrelated cmdlines (11-09 false backup_running, window skipped 6 days).
+# Now check real systemd backup units + held flock locks only.
+backup_running() {
+  if systemctl --user list-units --state=running --no-legend 'backup-*' 'oc-backup-*' 2>/dev/null | grep -q .; then return 0; fi
+  local f
+  for f in "$W"/state/work/backup-*.lock "$W"/state/locks/backup*.lock; do
+    [ -e "$f" ] || continue
+    if ! flock -n "$f" true 2>/dev/null; then return 0; fi
+  done
+  return 1
+}
+if [ "$FORCE" = "0" ] && backup_running; then FAIL="$FAIL backup_running"; fi
 if [ "$FORCE" = "0" ] && upgrade_running; then FAIL="$FAIL upgrade_running"; fi
 if [ "$FORCE" = "0" ] && [ -f "$W/state/work/.watchdog-pause" ]; then FAIL="$FAIL maintenance_pause"; fi
 # 2026-11-12 决策组 D-20261112-002 条件落地：TMPDIR 指向 /dev/shm/oc-tmp，
