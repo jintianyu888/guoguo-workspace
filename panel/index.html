@@ -1428,6 +1428,9 @@ body.hud.hud-idle #hudcanvas{opacity:0}
             <span class="ops-right">
               <button class="opsbtn danger" data-ops="repair" title="自动修复 + doctor --fix（会改配置，合并）">修复</button>
               <button class="opsbtn danger" data-ops="restart" title="重启网关（会短暂中断）">重启</button>
+              <button class="opsbtn" id="pcShutdown" title="Windows 主机：60 秒后关机（期间可取消）">电脑关机</button>
+              <button class="opsbtn" id="pcRestart" title="Windows 主机：60 秒后重启（期间可取消）">电脑重启</button>
+              <button class="opsbtn" id="pcCancel" title="取消已排定的关机/重启">取消关机</button>
               <button class="opsbtn danger" data-ops="stop" title="维护停机：停网关+停看门狗定时器；之后需点「启动」恢复">停机</button>
               <button class="opsbtn" data-ops="start-gw" title="启动网关并恢复看门狗定时器">启动</button>
               <button class="opsbtn danger" data-ops="rescue" title="8 阶段自救（会中断服务）">自救</button>
@@ -4008,7 +4011,7 @@ renderClock();
   }
   if(location.hash.indexOf('dim3')>=0){ setTimeout(function(){ lastAct=Date.now()-400000; setStage(3); },600); }   /* 自检：访问 #dim3 直接进最深档 */
   var ssForced=false;   /* v4.75 「立即」手动触发：即使选了「从不」也保持到用户动一下 */
-  /* v4.2.0 在场检测（输入维度）：在场时长 / 离席时长 + 10 分钟无操作黑屏 */
+  /* v4.2.0 在场检测（输入维度）：在场时长 / 离席时长 + 30 分钟无操作黑屏 */
   var presStart=Date.now(), presAway=false, blkEl=null;
   function bkoOn(){ return (localStorage.getItem('ss.blackout')||'1')==='1'; }
   function blackout(on){
@@ -4017,7 +4020,7 @@ renderClock();
       if(!blkEl){
         blkEl=document.createElement('div'); blkEl.id='blackout';
         blkEl.style.cssText='position:fixed;inset:0;z-index:95;background:#000;opacity:0;transition:opacity .8s;pointer-events:none';
-        var tip=document.createElement('div'); tip.textContent='无操作 10 分钟 · 动一下鼠标即恢复';
+        var tip=document.createElement('div'); tip.textContent='无操作 30 分钟 · 动一下鼠标即恢复';
         tip.style.cssText='position:absolute;left:0;right:0;bottom:26px;text-align:center;color:#123322;font:12px ui-monospace,Consolas,monospace';
         blkEl.appendChild(tip); document.body.appendChild(blkEl);
       }
@@ -4032,7 +4035,7 @@ renderClock();
     if(camSeen) presAway=false; else if(idle>=120000) presAway=true;
     var m = presAway ? Math.floor(idle/60000) : Math.floor((Date.now()-presStart)/60000);
     window.__presenceText = (presAway ? ('离席 '+m+' 分钟') : ('主公在场 '+m+' 分钟')) + (camOn2 ? (camSeen?' · 镜头有你':' · 镜头无人') : '');
-    if(bkoOn() && idle>=600000 && !camSeen) blackout(true); else blackout(false);
+    if(bkoOn() && idle>=1800000 && !camSeen) blackout(true); else blackout(false);
   }
   window.__ss=function(){ ssForced=true; lastAct=Date.now()-400000; setStage(3); };   /* v4.71/4.75 立即进入屏保 */
   /* v4.73 屏保等待时长可设：1/5/10/30/60 分钟，默认沿用 2.5 分钟 */
@@ -4521,7 +4524,7 @@ renderClock();
       });
       var bkoRow=document.createElement('div');
       var bkoNow=(localStorage.getItem('ss.blackout')||'1')==='1';
-      bkoRow.textContent='10 分钟无操作黑屏：'+(bkoNow?'开':'关');
+      bkoRow.textContent='30 分钟无操作黑屏：'+(bkoNow?'开':'关');
       bkoRow.style.cssText='padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;color:'+(bkoNow?'#8dffb8':'#8fa79a');
       bkoRow.onmouseenter=function(){ bkoRow.style.background='rgba(80,255,170,.16)'; };
       bkoRow.onmouseleave=function(){ bkoRow.style.background='transparent'; };
@@ -4641,6 +4644,28 @@ renderClock();
     if(face) offSent=false;
   }
   window.addEventListener('load', function(){ setTimeout(boot, 4000); });
+})();
+</script>
+<script>
+/* v4.5.0 电脑关机/重启：两步确认 + 60 秒可取消 + 记日志 + 通知果果 */
+(function(){
+  function show(msg){
+    var out=document.getElementById('opsoutinline')||document.getElementById('opsout');
+    if(out) out.textContent='['+new Date().toLocaleTimeString()+'] '+msg;
+  }
+  function doPower(act,label){
+    if(act!=='cancel'){
+      if(!window.confirm('确定要'+label+'吗？会先排定 60 秒倒计时，期间可点「取消关机」。')){ return; }
+    }
+    show(label+'：下发中…');
+    fetch('/api/power?action='+act+'&confirm=1',{cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
+      show(label+' → '+(j.ok?'已下发':'失败')+(j.out?(' '+j.out):'')+(j.err?(' '+j.err):''));
+    }).catch(function(e){ show(label+' → 网络失败 '+e.message); });
+  }
+  function bind(id,act,label){ var b=document.getElementById(id); if(b) b.onclick=function(e){ e.preventDefault(); e.stopPropagation(); doPower(act,label); }; }
+  bind('pcShutdown','shutdown','电脑关机');
+  bind('pcRestart','restart','电脑重启');
+  bind('pcCancel','cancel','取消关机');
 })();
 </script>
 </body>

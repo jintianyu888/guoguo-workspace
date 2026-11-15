@@ -99,7 +99,7 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 
 <!-- BUTLER-DIGEST:BEGIN -->
 ### 跨管家周摘要 2026-W46（自动生成，只读指针）
-- 判定口径：当日产出文件数 + 证据密度（file:line / rc= / exit code / 哈希 / 工具调用）。（acceptance-20261106.md:24）
+- 判定口径：当日产出文件数 + 证据密度（file:line / rc= / exit code / 哈希 / 工具调用）。（acceptance-20261109.md:24）
 全文：state/briefs/butler-weekly-2026-W46.md
 <!-- BUTLER-DIGEST:END -->
 - 主公手册（2026-11-10 立）：docs/主公手册-20261110.md，调用 `bash tools/manual.sh [list|节号|关键词]`；工作模式=完成即顺延（plan-reflow 1 分钟间隔）

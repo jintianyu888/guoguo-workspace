@@ -2588,6 +2588,25 @@ function upgradeBlockers(){
         reply(lines);
       });
   }
+  if (url.pathname === '/api/power') {
+    const act = String(url.searchParams.get('action') || '');
+    const confirm = url.searchParams.get('confirm') === '1';
+    const allowed = { shutdown: ['/s', '/t', '60'], restart: ['/r', '/t', '60'], cancel: ['/a'] };
+    if (!allowed[act]) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'bad action' })); return; }
+    if (act !== 'cancel' && !confirm) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'confirm=1 required' })); return; }
+    const exe = '/mnt/c/Windows/System32/shutdown.exe';
+    const args = allowed[act].slice();
+    if (act === 'shutdown') args.push('/c', '果果助手：60 秒后关机，可点取消关机');
+    if (act === 'restart') args.push('/c', '果果助手：60 秒后重启，可点取消关机');
+    try { fs.appendFileSync(path.join(__dirname, 'state-power.log'), new Date().toISOString() + ' ' + act + String.fromCharCode(10)); } catch (e) {}
+    execFile(exe, args, { cwd: '/mnt/c', timeout: 12000 }, (err, stdout, stderr) => {
+      const out = (String(stdout || '') + String(stderr || '')).replace(/[^\x20-\x7e]/g, ' ').replace(/\s+/g, ' ').trim();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: !err, act: act, out: out.slice(0, 300), err: err ? String(err.message || err).slice(0, 200) : null }));
+      if (act !== 'cancel') { try { execFile('bash', ['/home/j/.openclaw/workspace/tools/agent-msg.sh', 'send', 'main', '果果助手运维台：主公在面板点了 ' + (act === 'shutdown' ? '关机' : '重启') + '（60 秒倒计时，可取消）。时间 ' + new Date().toISOString()], { timeout: 15000 }, () => {}); } catch (e) {} }
+    });
+    return;
+  }
   if (url.pathname === '/api/monitor') {
     const mode = url.searchParams.get('mode') === 'on' ? 'on' : 'off';
     const psExe = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';

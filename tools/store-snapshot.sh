@@ -1,11 +1,16 @@
 #!/bin/bash
 # EH 存储区版本化快照：每个条目每日一个日期目录，硬链接增量，保留 14 天
 set -u
+# 2026-11-15: 互斥锁 + 起止标记。11-14 该脚本 03:24 跑完主体却挂住不退，
+# 把网关拖了 5 小时，导致 03:47~06:50 十余个定时任务集体漏跑。
+LOG=/home/j/.openclaw/workspace/state/store-snapshot.log
+exec 9>/tmp/store-snapshot.lock
+flock -n 9 || { echo "$(date '+%F %T') 已有实例在跑，退出" >>"$LOG"; exit 0; }
 SRCROOT=/mnt/e/openclaw-store
 ROOT=/mnt/h/openclaw-store
-LOG=/home/j/.openclaw/workspace/state/store-snapshot.log
 KEEP=14
 DATE=$(date +%Y%m%d)
+echo "$(date '+%F %T') START pid=$$" >>"$LOG"
 ITEMS="scores cooking-videos script-mystery-media"
 for IT in $ITEMS; do
   SRC="$SRCROOT/$IT"; OUT="$ROOT/$IT"
@@ -27,4 +32,5 @@ for IT in $ITEMS; do
   touch "$OUT/$DATE/.snapshot-done"
   ls -1d "$OUT"/20*/ 2>/dev/null | sort | head -n -"$KEEP" | while read -r d; do rm -rf "$d"; echo "$(date '+%F %T') 🗑 $IT 清理 $d" >>"$LOG"; done
 done
+echo "$(date '+%F %T') END" >>"$LOG"
 exit 0

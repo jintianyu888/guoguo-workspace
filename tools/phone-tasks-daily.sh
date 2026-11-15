@@ -40,8 +40,30 @@ if [ "$done" = "True" ]; then exit 0; fi
 if [ "$now" \< "$target" ]; then exit 0; fi
 
 echo "$(date -Is) RUN start" >> "$LOG"
-python3 "$SCRIPTS/phone-kola-task.py" >> "$LOG" 2>&1
+bash "$SCRIPTS/kola-onetap.sh" >> "$LOG" 2>&1
 rc=$?
+# 主路径 Kola 失败 → 退到直连淘宝，至少保证当日签到
+if [ "$rc" != "0" ]; then
+  echo "$(date -Is) Kola 失败 rc=$rc，退直连淘宝签到" >> "$LOG"
+  bash "$SCRIPTS/taobao-coin.sh" >> "$LOG" 2>&1
+  rc2=$?
+  [ "$rc2" = "0" ] && rc=0
+fi
+# 失败不标 done，最多重试 3 次后放弃（避免无限重试）
+if [ "$rc" != "0" ]; then
+  att=$(python3 -c "import json;print(json.load(open('$STATE')).get('attempts',0))")
+  att=$((att+1))
+  python3 - "$STATE" "$att" <<'PY'
+import json,sys
+p,a=sys.argv[1],int(sys.argv[2])
+d=json.load(open(p)); d['attempts']=a
+if a>=3: d['done']=True
+d['rc']=1
+json.dump(d,open(p,'w'))
+PY
+  echo "$(date -Is) RUN fail rc=$rc attempts=$att" >> "$LOG"
+  exit 0
+fi
 python3 - "$STATE" "$rc" <<'PY'
 import json,sys
 state,rc=sys.argv[1],sys.argv[2]

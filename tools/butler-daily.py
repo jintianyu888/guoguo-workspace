@@ -34,7 +34,7 @@ def fmt(ms):
 
 def main():
     today = datetime.date.today().isoformat()
-    jobs = {j.get("effectiveAgentId"): j for j in cron_jobs() if "自审" in (j.get("name") or "")}
+    jobs = {(j.get("effectiveAgentId") or j.get("agentId")): j for j in cron_jobs() if "自审" in (j.get("name") or "")}
     out = []
     for aid, name in BUTLERS:
         j = jobs.get(aid) or {}
@@ -42,10 +42,12 @@ def main():
         ws = WS.get(aid, "")
         review_dir = os.path.join(ws, "state", "self-review") if ws else ""
         today_file = os.path.join(review_dir, today + ".md") if review_dir else ""
-        if review_dir and today_file and not os.path.exists(today_file):
-            alt = os.path.join(review_dir, today.replace("-", "") + ".md")
-            if os.path.exists(alt):
+        for cand in (today + ".md", "self-review-" + today + ".md",
+                     today.replace("-", "") + ".md", "self-review-" + today.replace("-", "") + ".md"):
+            alt = os.path.join(review_dir, cand) if review_dir else ""
+            if alt and os.path.exists(alt):
                 today_file = alt
+                break
         latest = ""
         if review_dir and os.path.isdir(review_dir):
             files = sorted(glob.glob(os.path.join(review_dir, "*.md")))
@@ -58,6 +60,8 @@ def main():
             "next_run": fmt(st.get("nextRunAtMs")),
             "last_run": fmt(st.get("lastRunAtMs")),
             "last_status": st.get("lastRunStatus") or "",
+            "job_enabled": bool(j.get("enabled")),
+            "job_missing": not bool(j),
             "review_today": bool(today_file and os.path.exists(today_file)),
             "review_latest": latest,
             "review_size": os.path.getsize(today_file) if (today_file and os.path.exists(today_file)) else 0,

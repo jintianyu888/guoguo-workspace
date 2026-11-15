@@ -79,6 +79,14 @@ def job_hhmm(expr):
     p = (expr or '').split()
     if len(p) >= 2 and p[0].isdigit() and p[1].isdigit():
         return '%02d:%02d' % (int(p[1]), int(p[0]))
+    if len(p) >= 2 and '/' in p[1]:
+        try:
+            step = p[1].split('/')[1].split()[0]
+            return '每%s小时' % step
+        except Exception:
+            pass
+    if len(p) >= 2 and p[1] == '*':
+        return '每小时'
     return expr or '?'
 
 def review_file(wsp, d):
@@ -143,10 +151,13 @@ def main():
             expr = sch.get('expr') or sch.get('cron') or ''
             st = j.get('state') or {}
             ms = st.get('nextRunAtMs')
-            if ms:
-                nd = datetime.datetime.fromtimestamp(ms/1000)
-                if nd.date() == d:
-                    todays.append('%s %s' % (nd.strftime('%H:%M'), j.get('name','')[:16]))
+            # 一次性任务看 nextRunAtMs；周期任务必须按表达式判断今天是否会跑
+            # （nextRunAtMs 往往已滚到明天，用它判断今天会漏报）
+            if (sch.get('kind') == 'at') or (not expr and ms):
+                if ms:
+                    nd = datetime.datetime.fromtimestamp(ms/1000)
+                    if nd.date() == d:
+                        todays.append('%s %s' % (nd.strftime('%H:%M'), j.get('name','')[:16]))
                 continue
             if cron_fires_today(expr, d):
                 todays.append('%s %s' % (job_hhmm(expr), j.get('name','')[:16]))

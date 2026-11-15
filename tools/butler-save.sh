@@ -29,6 +29,8 @@ esac
 case "$AID" in
   maint)  WS=/home/j/openclaw-workspaces/maint ;;
   model)  WS=/home/j/.openclaw/workspace-model ;;
+  # 2026-11-15：backup 工作区不在 openclaw-workspaces 下（原来走默认分支 → ENOENT/exit 3）
+  backup) WS=/home/j/.openclaw/workspace-backup ;;
   work)   WS=/home/j/openclaw-workspaces/work ;;
   hermess|sheet-music) WS=/home/j/openclaw-workspaces/sheet-music ;;
   *)      WS="/home/j/openclaw-workspaces/$AID" ;;

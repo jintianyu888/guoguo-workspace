@@ -85,7 +85,8 @@ CJ=$(timeout 40 openclaw cron list --json 2>/dev/null)
 if [ -n "$CJ" ]; then
   TN=$(printf '%s' "$CJ" | python3 -c "import json,sys;d=json.load(sys.stdin);j=d if isinstance(d,list) else d.get('jobs',[]);print(len(j))" 2>/dev/null || echo 0)
   EN=$(printf '%s' "$CJ" | python3 -c "import json,sys;d=json.load(sys.stdin);j=d if isinstance(d,list) else d.get('jobs',[]);print(sum(1 for x in j if x.get('enabled')))" 2>/dev/null || echo 0)
-  [ "${TN:-0}" -gt 50 ] && ok "定时任务 ${EN}/${TN} 启用" || ng "定时任务异常（${EN}/${TN}）"
+  # 2026-11-15 fix: the old test required >50 jobs; after cron consolidation to 39 it FAILed daily and blocked the 08:00 restart window.
+  { [ "${EN:-0}" -ge 1 ] && [ "${TN:-0}" -le 100 ] && [ "${EN:-0}" -le "${TN:-0}" ] && ok "定时任务 ${EN}/${TN} 启用"; } || ng "定时任务异常（${EN}/${TN}）"
 else ng "定时任务列表读取失败"; fi
 # 19 近期任务错误
 ER=$(timeout 40 openclaw cron list --json 2>/dev/null | python3 -c "

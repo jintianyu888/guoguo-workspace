@@ -11,7 +11,35 @@ XD=/mnt/x/openclaw-backups
 STAGE=/home/j/backup-stage  # 2026-10-18 修：不可放在 /home/j/.openclaw 内（backup create 禁止写入源路径）
 LOG=/home/j/.openclaw/workspace/state/work/bk-run.log
 mkdir -p "$OUT" "$STAGE"
+# 2026-11-15 修（#1001）：退出兜底清理暂存——超时/被杀也会执行，前提是 X 盘已有同尺寸副本
+cleanup_stage() {
+  [ -n "${F:-}" ] || return 0
+  case "$F" in "$STAGE"/*) ;; *) return 0 ;; esac
+  [ -f "$F" ] || return 0
+  local xb="$XD/$(basename "$F")"
+  if [ -f "$xb" ] && [ "$(stat -c %s "$xb" 2>/dev/null)" = "${S:-0}" ]; then
+    rm -f "$F"
+    echo "=== $(date '+%F %T') 兜底清理暂存 $(basename "$F") ===" >> "$LOG"
+  fi
+}
+trap cleanup_stage EXIT
 if [ "$1" = "create" ]; then
+  # 2026-11-15 修（#1001）：重试去重——今日已有归档（<12h 且 >10G）就不再重新打包
+  TODAY=$(date +%Y-%m-%d)
+  DUPF=$(ls -t "$XD"/*"$TODAY"*.tar.gz "$OUT"/*"$TODAY"*.tar.gz 2>/dev/null | while read -r cand; do
+    [ -f "$cand" ] || continue
+    csz=$(stat -c %s "$cand" 2>/dev/null || echo 0)
+    cmt=$(stat -c %Y "$cand" 2>/dev/null || echo 0)
+    [ "$csz" -gt 10737418240 ] && [ $(( $(date +%s) - cmt )) -lt 43200 ] && { echo "$cand"; break; }
+  done | head -1)
+  if [ -n "${DUPF:-}" ]; then
+    echo "=== $(date '+%F %T') 今日已有归档 $(basename "$DUPF")，跳过重复打包（仍执行落盘/推送） ===" >> "$LOG"
+    SKIP=1
+  else
+    SKIP=0
+  fi
+
+  if [ "$SKIP" = "0" ]; then
   sh /home/j/.openclaw/workspace/tools/stage-agent-dbs.sh >> "$LOG" 2>&1
   sh /home/j/.openclaw/workspace/tools/gen-recovery-doc.sh >> "$LOG" 2>&1
   sh /home/j/.openclaw/workspace/tools/backup-report.sh > /home/j/.openclaw/workspace/state/backup-report.txt 2>&1
@@ -29,13 +57,15 @@ if [ "$1" = "create" ]; then
     rm -rf "$TRY"; sleep 20
   done
   [ "$BAK_OK" = "1" ] || { echo "=== $(date '+%F %T') 打包连续 3 次失败 ===" >> "$LOG"; echo "打包失败" >> "$LOG"; exit 1; }
-  F=$(ls -t "$STAGE"/*.tar.gz 2>/dev/null | head -1)
+  fi
+  if [ "$SKIP" = "1" ]; then F="$DUPF"; else F=$(ls -t "$STAGE"/*.tar.gz 2>/dev/null | head -1); fi
   [ -z "$F" ] && { echo "原生盘无归档产物" >> "$LOG"; exit 1; }
   B=$(basename "$F"); S=$(stat -c%s "$F")
+  if [ "${NP_DRY:-0}" = "1" ]; then echo "[dry] 将落盘 X/D 并推 NAS: $B ($S 字节)"; exit 0; fi
   echo "=== $(date '+%F %T') 打包完成 $B ($S 字节)，开始整文件复制到 D ===" >> "$LOG"
 # 2026-11-05 22:35 主公令：第一份落 X 盘（本地最快，恢复读取优先）
 mkdir -p "$XD"
-if cp -f "$F" "$XD/$B.part" && mv -f "$XD/$B.part" "$XD/$B"; then
+if [ "$F" = "$XD/$B" ]; then echo "✅ 已在 X 盘(源即副本): $XD/$B" >> "$LOG"; elif cp -f "$F" "$XD/$B.part" && mv -f "$XD/$B.part" "$XD/$B"; then
   XS=$(stat -c %s "$XD/$B" 2>/dev/null || echo 0)
   if [ "$XS" = "$(stat -c %s "$F")" ]; then echo "✅ 已落 X 盘(第一份): $XD/$B ($XS 字节)" >> "$LOG";
   else echo "❌ X 盘大小不符: $XS 与源不符" >> "$LOG"; exit 1; fi
@@ -56,13 +86,20 @@ else echo "❌ 复制到 X 失败" >> "$LOG"; exit 1; fi
   if [ "$DS" != "$S" ]; then echo "❌ D 盘大小不符 本地=$S D=$DS" >> "$LOG"; exit 1; fi
   echo "✅ 已落 D 盘: $B ($DS 字节)" >> "$LOG"
 fi
+  if [ "${NP_ASYNC:-1}" = "1" ]; then
+    systemd-run --user --collect --unit="nas-push-$(date +%H%M%S)" --setenv=PATH=/usr/bin:/bin /bin/bash "$0" push "$F" >> "$LOG" 2>&1 \
+      && echo "=== $(date '+%F %T') 已异步派发 NAS 推送 $(basename "$F")（不占备份窗口）" >> "$LOG" \
+      || echo "⚠️ $(date '+%F %T') 异步派发失败，本次跳过 NAS（下次 push 补推）" >> "$LOG"
+    bash /home/j/.openclaw/workspace/tools/backup-retain.sh >> "$LOG" 2>&1
+    exit 0
+  fi
   echo "=== $(date '+%F %T') 开始推新 NAS ===" >> "$LOG"
   if nas_guard "$DEST"; then
     AV=$(df -Pk "$DEST" | awk 'NR==2{print $4*1024}')
     if [ "${AV:-0}" -lt "$S" ]; then
       echo "❌ 新 NAS 空间不足：剩余 ${AV:-0} 字节，需要 $S 字节 —— 跳过推送，本地归档保留" >> "$LOG"
     else
-      cp -f "$F" "$DEST/$B.part" && mv -f "$DEST/$B.part" "$DEST/$B"
+      rsync -a --partial --inplace --append-verify "$F" "$DEST/$B.part" && mv -f "$DEST/$B.part" "$DEST/$B"
       R=$(stat -c%s "$DEST/$B" 2>/dev/null)
       if [ "$S" = "$R" ]; then
         echo "✅ 归档已推送到新 NAS: $B ($S 字节)" >> "$LOG"
@@ -79,7 +116,7 @@ fi
   rm -f "$STAGE"/*.tar.gz 2>/dev/null
 fi
 if [ "$1" = "push" ]; then
-  F=$(ls -t "$OUT"/*.tar.gz 2>/dev/null | head -1)
+  F=${2:-$(ls -t "$OUT"/*.tar.gz 2>/dev/null | head -1)}
   [ -z "$F" ] && { echo "无归档可推送"; exit 1; }
   B=$(basename "$F"); S=$(stat -c%s "$F")
   nas_guard "$DEST" || { echo "❌ 新 NAS 未挂载，拒绝推送"; exit 1; }

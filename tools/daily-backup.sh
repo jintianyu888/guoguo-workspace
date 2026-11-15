@@ -2,9 +2,24 @@
 # daily-backup.sh —— 每日全量备份（网关命令型任务执行，2026-10-15 重写）
 # 背景：旧版由 agent 会话 setsid 甩出后台，被本机掐掉 → 42 小时没出新归档
 set -u
+# 2026-11-15: 备份期间 9p/磁盘 IO 饱和会让 SQLite 拿锁超时（cron maintenance 报 database is locked 并重排计划）。
+# 以低优先级 IO 跑，给在线服务留出锁窗口。
+if [ -z "${BK_NICED:-}" ]; then export BK_NICED=1; exec nice -n 10 ionice -c 2 -n 7 "$0" "$@"; fi
 OUT=/mnt/d/openclaw-backups
 LOG=/home/j/.openclaw/workspace/state/work/bk-run.log
 mkdir -p "$OUT"
+# 2026-11-15 修（#1001）：今日已有归档（<12h 且 >10G）就不再重复打包，重试/重复任务直接跳过
+TODAY=$(date +%Y-%m-%d)
+DUPF=$(ls -t "$OUT"/*"$TODAY"*.tar.gz /mnt/x/openclaw-backups/*"$TODAY"*.tar.gz 2>/dev/null | while read -r cand; do
+  [ -f "$cand" ] || continue
+  csz=$(stat -c %s "$cand" 2>/dev/null || echo 0)
+  cmt=$(stat -c %Y "$cand" 2>/dev/null || echo 0)
+  [ "$csz" -gt 10737418240 ] && [ $(( $(date +%s) - cmt )) -lt 43200 ] && { echo "$cand"; break; }
+done | head -1)
+if [ -n "${DUPF:-}" ]; then
+  echo "=== [$(date '+%F %T')] 今日已有归档 $(basename "$DUPF")，跳过重复打包 ===" >> "$LOG"
+  exit 0
+fi
 echo "=== [$(date '+%F %T')] 每日全量备份开始 ===" | tee -a "$LOG"
 echo "[1/5] 暂存管家原始库..." | tee -a "$LOG"; sh /home/j/.openclaw/workspace/tools/stage-agent-dbs.sh >>"$LOG" 2>&1 || true
 echo "[2/5] 刷新自恢复手册..." | tee -a "$LOG"; sh /home/j/.openclaw/workspace/tools/gen-recovery-doc.sh >>"$LOG" 2>&1 || true
