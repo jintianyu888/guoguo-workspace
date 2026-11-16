@@ -15,11 +15,23 @@ gw_health(){ timeout 6 curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1
 gw_pid(){ timeout 3 systemctl --user show -p MainPID --value openclaw-gateway 2>/dev/null | tr -d '\r'; }
 gw_rss(){ local p; p=$(gw_pid); [ -n "$p" ] && [ "$p" != "0" ] && awk '/VmRSS/{printf "%.1f", $2/1048576}' /proc/$p/status 2>/dev/null || echo 0; }
 ver(){ timeout 20 openclaw --version 2>/dev/null | head -1 || echo "未知"; }
-cron_count(){ local o; o=$(timeout 25 openclaw cron list --json 2>/dev/null | python3 -c "import json,sys
+cron_count(){
+  # v2 2026-11-16: 3 次重试取最大值，读取不全不再误判 FAIL
+  local best_n=0 best_o="0 0" o n i
+  for i in 1 2 3; do
+    o=$(timeout 25 openclaw cron list --json 2>/dev/null | python3 -c "import json,sys
 try:
     d=json.load(sys.stdin); j=d if isinstance(d,list) else d.get('jobs',d.get('data',[]))
     print(len(j), sum(1 for x in j if x.get('enabled')))
-except Exception: print('0 0')" 2>/dev/null); echo "${o:-0 0}" | head -1; }
+except Exception: print('0 0')" 2>/dev/null | head -1)
+    n=$(echo "$o" | cut -d' ' -f1)
+    case "$n" in ''|*[!0-9]*) continue;; esac
+    if [ "$n" -gt "$best_n" ]; then best_n=$n; best_o="$o"; fi
+    [ "$n" -ge 80 ] && break
+    sleep 5
+  done
+  echo "$best_o"
+}
 backup_age(){ local f; f=$(ls -t /mnt/d/openclaw-backups/*openclaw-backup.tar.gz 2>/dev/null | head -1); [ -z "$f" ] && { echo "无归档"; return; }
   local m; m=$(stat -c %Y "$f" 2>/dev/null); echo "$(( ( $(date +%s) - m ) / 3600 )) 小时前 ($(stat -c %s "$f" 2>/dev/null | awk '{printf "%.1fG", $1/1073741824}'))"; }
 
@@ -52,7 +64,10 @@ selfcheck)
   [ "$(systemctl --user is-active oc-gateway-watchdog.timer 2>/dev/null)" = "active" ] && chk "看门狗定时器 运行中" pass || chk "看门狗定时器 未运行" warn
   if [ "$H" = "200" ]; then
     C=$(cron_count); N=$(echo "$C" | cut -d' ' -f1); E=$(echo "$C" | cut -d' ' -f2)
-    [ "$N" -gt 50 ] 2>/dev/null && chk "定时任务 $E/$N 启用" pass || chk "定时任务异常 ($C)" fail
+    if [ "$N" -gt 0 ] 2>/dev/null; then
+      if [ "$N" -lt 80 ] 2>/dev/null; then chk "定时任务数偏低 $E/$N（读取可能不全）" warn
+      else chk "定时任务 $E/$N 启用" pass; fi
+    else chk "定时任务读取失败" fail; fi
   else chk "网关未响应，任务数跳过" fail; fi
   OOM=$(journalctl -k --since "-24h" --no-pager 2>/dev/null | grep -ci "oom-kill" || true); OOM=${OOM:-0}
   [ "$OOM" = "0" ] && chk "24h 内核 OOM 0 次" pass || chk "24h OOM $OOM 次" warn
