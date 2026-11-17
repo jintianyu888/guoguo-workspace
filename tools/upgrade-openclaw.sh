@@ -12,8 +12,16 @@ LEDGER="$WS/state/work/upgrade-ledger.jsonl"
 UPFLAG="$WS/state/work/.upgrade-running"
 DBLIST="$OH/state/openclaw.sqlite $OH/lcm.db $WS/state/ledger/ledger.db $OH/agents/main/agent/openclaw-agent.sqlite"
 MODE=upgrade
-[ "${1:-}" = "--dry-run" ] && MODE=dryrun
-[ "${1:-}" = "--postcheck-only" ] && MODE=postcheck
+PIN=""; FORCE=0
+for a in "$@"; do
+  case "$a" in
+    --dry-run) MODE=dryrun;;
+    --postcheck-only) MODE=postcheck;;
+    --version=*) PIN="${a#--version=}";;
+    --force) FORCE=1;;
+  esac
+done
+PIN="${PIN:-${OPENCLAW_TARGET:-}}"
 
 say(){ printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*"; }
 hr(){ echo "---------------------------------------------"; }
@@ -64,9 +72,17 @@ do_upgrade(){
 say "===== OpenClaw 升级 ====="
 CUR=$(ver); [ -n "$CUR" ] || die "读不到当前版本"
 say "当前版本 $CUR"
-TGT=$(latest); [ -n "$TGT" ] || die "查不到最新版本（npm 不通）"
-say "目标版本 $TGT"
+if [ -n "$PIN" ]; then TGT="$PIN"; say "目标版本 $TGT（指定）"
+else TGT=$(latest); [ -n "$TGT" ] || die "查不到最新版本（npm 不通）"; say "目标版本 $TGT（latest）"; fi
 if [ "$CUR" = "$TGT" ]; then say "已是最新，无需升级"; note uptodate "$CUR"; exit 0; fi
+# 2026-11-17：成熟度闸门 —— 目标版本发布 ≥7 天才允许安装，--force 显式覆盖
+RDAY=$(timeout 40 npm view openclaw time --json 2>/dev/null | python3 -c 'import json,sys,datetime; t=json.load(sys.stdin); s=t.get(sys.argv[1]); print("" if not s else round((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(s.replace("Z","+00:00"))).total_seconds()/86400,2))' "$TGT" 2>/dev/null)
+if [ -n "$RDAY" ]; then
+  say "  目标成熟度 ${RDAY} 天"
+  if python3 -c 'import sys; sys.exit(0 if float(sys.argv[1])>=7 else 1)' "$RDAY"; then :
+  elif [ "$FORCE" = "1" ]; then say "  ⚠ 不足 7 天，--force 覆盖"
+  else die "目标 $TGT 发布仅 ${RDAY} 天（<7 天成熟度门槛）；确要装请加 --force"; fi
+else say "  ⚠ 查不到 $TGT 发布时间，跳过成熟度校验"; fi
 
 hr; say "① 预检"
 FREE=$(df -Pm /home/j | tail -1 | awk '{print $4}')

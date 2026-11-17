@@ -68,9 +68,23 @@ fi
 # 2026-10-31 双审必改项：模型链体检（悬空引用即取消；不可查=显式告警后继续）
 MCOUT=$(cd "$W" && timeout 60 python3 tools/modelchain-check.py 2>&1); MCRC=$?
 say "模型链体检 rc=$MCRC"
+# 2026-11-17：瞬时探测抖动（B 机 ollama 睡眠/网络）重试 2 次，别一次失败就整天不重启
+for _mtry in 1 2; do
+  [ "$MCRC" -eq 0 ] && break
+  sleep 15
+  MCOUT=$(cd "$W" && timeout 60 python3 tools/modelchain-check.py 2>&1); MCRC=$?
+  say "模型链体检重试$_mtry rc=$MCRC"
+done
 if [ "$MCRC" -eq 1 ]; then
-  notify "【重启窗口】模型链体检失败（配置存在悬空模型引用），已取消重启：$MCOUT"
-  exit 0
+  # 2026-11-17：只有 ollama/ 本地兜底模型悬空时降级为 WARN（本地模型是最后一档，坏了不该拦重启）
+  NONOLLAMA=$(printf '%s\n' "$MCOUT" | grep -E '配置引用不存在|本地模型未安装|SUSPENDED' | grep -v 'ollama/' | head -3)
+  if [ -z "$NONOLLAMA" ]; then
+    say "模型链仅本地兜底引用异常（降级 WARN，不拦重启）"
+    notify "【重启窗口】模型链仅本地兜底模型异常，按 WARN 继续：$(printf '%s' "$MCOUT" | grep -E 'ollama/' | head -2)"
+  else
+    notify "【重启窗口】模型链体检失败（云模型引用异常），已取消重启：$NONOLLAMA"
+    exit 0
+  fi
 fi
 if [ "$MCRC" -eq 2 ]; then
   notify "【重启窗口】模型链不可查（本地模型端不可达），按 WARN 继续并告警：$MCOUT"
@@ -82,6 +96,28 @@ if [ -n "$BA" ]; then
   AGEH=$(( ( $(date +%s) - $(stat -c %Y "$BA") ) / 3600 ))
   say "最近备份：${AGEH}h 前"
   [ "$AGEH" -gt 30 ] && say "注意：备份偏旧（>30h），但仍按窗口执行"
+fi
+
+# 2.5) 升级挂载：有 .upgrade-armed 就由本窗口直接升级（替代一次纯重启，2026-11-17）
+ARMF=$W/state/work/.upgrade-armed
+if [ -f "$ARMF" ]; then
+  TGT=$(head -1 "$ARMF" | tr -d '[:space:]')
+  say "发现升级挂载：${TGT:-空} → 本窗口执行升级（替代本次重启）"
+  if [ -z "$TGT" ]; then say "挂载文件为空，忽略并删掉"; rm -f "$ARMF"; else
+  if [ "$DRY" = "1" ]; then say "dry-run：将执行 bash tools/upgrade-openclaw.sh --version=$TGT"; exit 0; fi
+  bash "$W/tools/upgrade-openclaw.sh" --version="$TGT" 2>&1 | tail -40
+  URCP=${PIPESTATUS[0]}
+  if [ "$URCP" = "0" ]; then
+    rm -f "$ARMF"
+    printf '%s %s\n' "$(date +%F)" "$(timeout 60 openclaw --version 2>/dev/null | tail -1 | awk '{print $2}')" > "$W/state/work/.upgrade-auto-done"
+    say "升级分支完成 rc=0"
+  else
+    say "升级失败 rc=$URCP（升级脚本已尝试自动回滚），保留挂载文件供排查"
+    notify "【升级窗口】升级失败 rc=$URCP，已尝试回滚，详见 state/work/upgrade-ledger.jsonl"
+  fi
+  say "===== 重启窗口结束（升级分支）====="
+  exit 0
+  fi
 fi
 
 # 3) 执行重启

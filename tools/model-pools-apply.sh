@@ -8,9 +8,9 @@ LOG=$W/state/work/model-pools.log
 LK=$W/state/work/model-pools.lock
 mkdir -p "$(dirname "$LK")"
 exec 9>"$LK"; flock -n 9 || { echo "SKIP 已有实例在跑"; exit 3; }
-FB_CHAIN='{"primary":"deepseek/deepseek-flash","fallbacks":["deepseek/deepseek-v4-pro","zai/glm-5.3","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
-L1='{"primary":"zai/glm-5.3-flash","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","deepseek/deepseek-v4-pro","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
-L3='{"primary":"deepseek/deepseek-v4-pro","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
+FB_CHAIN='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3","ollama/gpt-oss:20b"]}'
+L1='{"primary":"zai/glm-5.3-flash","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","ollama/gpt-oss:20b"]}'
+L3='{"primary":"deepseek/deepseek-v4-pro","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","ollama/gpt-oss:20b"]}'
 declare -A POOL=(
   [news]=L1 [cooking]=L1 [study]=L1 [security]=L1 [print]=L1 [sheet-music]=L1
 )

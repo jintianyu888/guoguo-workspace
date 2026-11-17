@@ -6,6 +6,12 @@
 ## 0. 一句话现状
 A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 37 个 agent；B 机（9950X / RX 9070XT 16G，192.168.1.107）跑本地 ollama；云端 DeepSeek 为主力执行模型。7900X/9950X 均无核显。
 
+## 0.01 升级窗口（2026-11-17 定）
+升级走「07:30 判定挂载 + 08:00 窗口执行」：`oc-upgrade-auto.timer`→`tools/upgrade-auto.sh`（判定，写 state/work/.upgrade-armed）→`restart-window.sh` 升级分支→`upgrade-openclaw.sh --version=X`（内置成熟度闸门：目标 <7 天直接拒绝）。计划与时间线：docs/升级执行-20261124.md；策略：docs/OpenClaw升级节奏与策略-20261115.md。
+
+## 0.02 整机重启节奏（2026-11-17 主公定 B）
+每天 08:00 只重启网关；每周日 04:00 整机重启（`OpenClaw-Weekly-Reboot`→`openclaw-weekly-reboot.ps1`，先查备份锁，忙则等 40 分钟或跳过）；登录触发 `OpenClaw-Boot-Heal`→按新 IP 重写 5 条 portproxy→跑 `tools/boot-recover.sh`（含漏档补跑 `tools/cron-catchup.py`：白名单轻活、最多 6 个、12 分钟宽限、6 小时去重）→飞书报备。自动登录已开（2026-11-17 22:23 实跑验证）：账户 GY\J 密码存 Winlogon/DefaultPassword（仅管理员可读），关键是 DevicePasswordLessBuildVersion 必须=0（=2 时系统只认 Hello/PIN，自动登录被忽略）；登录后 60 秒由 OpenClaw-Lock-After-Logon 自动锁屏。校验密码用 LogonUser，别用 PrincipalContext.ValidateCredentials（本机抛 extended error）。安装器 oc-autologon-v14.ps1，回滚走桌面 OpenClaw-关闭自动登录.bat。细则 docs/每周重启与开机自愈-20261117.md。
+
 ## 0.1 频道职责边界（2026-10-31 12:52 主公令）
 - feishu[backup] 账号只负责：①备份 ②磁盘空间规划。其它事务转交对应管家。
 - 本账号（main/果果）按 AGENTS.md 全职责执行；备份盘位（D/X/E/H/群晖）归备份管家规划，D 盘另有他人文件慎占、只留 1 份。

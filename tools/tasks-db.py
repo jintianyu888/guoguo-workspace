@@ -186,6 +186,15 @@ def cmd_set(args):
     c.commit(); print('#%s 已更新'%no)
 
 
+def cmd_show(args):
+    no=int(args[0]); c=conn()
+    r=c.execute('SELECT * FROM tasks WHERE no=?',(no,)).fetchone()
+    if not r: print('无此任务'); return 2
+    d=dict(r)
+    for k,v in d.items():
+        if v not in (None,''): print('%-10s %s'%(k,v))
+    return 0
+
 def cmd_add(args):
     # add <no> <title> [key=value ...]  key: status/group/prio/kind/verify/note
     no=int(args[0]); title=args[1]
@@ -236,5 +245,5 @@ if __name__=='__main__':
     cmd=sys.argv[1] if len(sys.argv)>1 else 'check'
     a=sys.argv[2:]
     {'import':lambda:cmd_import(),'export':lambda:cmd_export(),'list':lambda:cmd_list(a),
-     'done':lambda:cmd_done(a),'set':lambda:cmd_set(a),'add':lambda:cmd_add(a),'log':lambda:cmd_log(a),
+     'done':lambda:cmd_done(a),'set':lambda:cmd_set(a),'add':lambda:cmd_add(a),'log':lambda:cmd_log(a),'show':lambda:cmd_show(a),
      'check':lambda:cmd_check()}.get(cmd,lambda:print('未知命令'))()

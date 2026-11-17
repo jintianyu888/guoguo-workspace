@@ -76,13 +76,14 @@ def build():
             if money in (0, 0.0): money = None
         e = {
             "kind": kind,
-            "label": p.get("label") or b.get("label") or n,
-            "plan": {"name": p.get("plan") or b.get("plan") or "", "expire": p.get("plan_expire") or "",
+            "label": p.get("label") or b.get("label") or q.get("label") or n,
+            "plan": {"name": p.get("plan") or b.get("plan") or q.get("plan") or q.get("plan_name") or "", "expire": p.get("plan_expire") or b.get("plan_expire") or q.get("plan_expire") or "", "days_left": q.get("days_left"),
                      "auto_renew": b.get("auto_renew")},
             "quota": {
                 "h5_pct": _pct(p.get("h5"), p.get("h5_pct") if p.get("h5_pct") is not None else b.get("h5_pct")),
                 "week_pct": _pct(p.get("week"), p.get("week_pct") if p.get("week_pct") is not None else b.get("week_pct")),
-                "month_pct": _pct(month_blk, p.get("month_used_pct") if p.get("month_used_pct") is not None else b.get("month_used_pct")),
+                "month_pct": _pct(month_blk, p.get("month_used_pct") if p.get("month_used_pct") is not None else (b.get("month_used_pct") if b.get("month_used_pct") is not None else q.get("month_used_pct"))),
+                "month_remaining_pct": _pct(None, q.get("month_remaining_pct") if q.get("month_remaining_pct") is not None else (b.get("month_remaining_pct") if b.get("month_remaining_pct") is not None else (q.get("values") or {}).get("month_pct"))),
                 "week_reset": (p.get("week") or {}).get("reset_at") if isinstance(p.get("week"), dict) else b.get("week_reset_at"),
                 "h5_reset": (p.get("h5") or {}).get("reset_at") if isinstance(p.get("h5"), dict) else b.get("h5_reset_at"),
             },
@@ -132,7 +133,17 @@ def fmt(e):
         parts = []
         if q.get("h5_pct") is not None: parts.append(f"5h {q['h5_pct']}%")
         if q.get("week_pct") is not None: parts.append(f"周 {q['week_pct']}%")
-        if q.get("month_pct") is not None: parts.append(f"本期 {q['month_pct']}%")
+        if q.get("month_remaining_pct") is not None:
+            rem = q["month_remaining_pct"]
+            tail = ""
+            exp = (e.get("plan") or {}).get("expire") or ""
+            if exp[:10]:
+                tail = f"，{exp[5:10]} 到期"
+            dl = (e.get("plan") or {}).get("days_left")
+            if dl not in (None, ""):
+                tail += f"（还剩 {dl} 天）"
+            parts.append(f"剩余 {rem}%" + tail)
+        elif q.get("month_pct") is not None: parts.append(f"本期 {q['month_pct']}%")
         return f"{e['label']}：" + ("，".join(parts) if parts else "额度未采集") 
     return f"{e['label']}：¥{e['money_cny']:.2f}" if isinstance(e.get("money_cny"), (int, float)) else f"{e['label']}：余额未采集"
 

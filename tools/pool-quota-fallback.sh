@@ -11,8 +11,8 @@ LOG=$W/state/work/pool-quota.log
 LK=$W/state/work/pool-quota.lock
 mkdir -p "$(dirname "$LK")" "$(dirname "$LOG")"
 exec 9>"$LK"; flock -n 9 || { echo "SKIP 并发"; exit 3; }
-L1='{"primary":"zai/glm-5.3-flash","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","deepseek/deepseek-v4-pro","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
-FB='{"primary":"deepseek/deepseek-flash","fallbacks":["deepseek/deepseek-v4-pro","zai/glm-5.3","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
+L1='{"primary":"zai/glm-5.3-flash","fallbacks":["deepseek/deepseek-flash","zai/glm-5.3","ollama/gpt-oss:20b"]}'
+FB='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3","ollama/gpt-oss:20b"]}'
 IDS="news cooking study security print sheet-music"
 DRY=0; FORCE=0
 for a in "$@"; do case "$a" in --dry-run) DRY=1;; --force) FORCE=1;; esac; done

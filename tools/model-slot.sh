@@ -8,9 +8,9 @@ set -u
 W=/home/j/.openclaw/workspace
 LOG=$W/state/work/model-slot.log
 mkdir -p "$W/state/work"
-GLM='{"primary":"zai/glm-5.3-flash","fallbacks":["zai/glm-5.3","kimi-coding/kimi-for-coding","deepseek/deepseek-flash","deepseek/deepseek-v4-pro","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
-KIMI='{"primary":"kimi-coding/kimi-for-coding","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","deepseek/deepseek-flash","deepseek/deepseek-v4-pro","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
-DS='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","kimi-coding/kimi-for-coding","deepseek/deepseek-v4-pro","ollama/qwen3:30b-a3b-instruct-2507-q4_K_M"]}'
+GLM='{"primary":"zai/glm-5.3-flash","fallbacks":["zai/glm-5.3","kimi-coding/kimi-for-coding","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
+KIMI='{"primary":"kimi-coding/kimi-for-coding","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
+DS='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","kimi-coding/kimi-for-coding","ollama/gpt-oss:20b"]}'
 case "${1:-}" in
   peak)           JSON="$GLM" ;;   # 上午高峰全价档：GLM 主力
   afternoon)      JSON="$GLM" ;;  # 下午档：GLM 主力（避开编码卡 ToS），Kimi 仅在 fallback 链
