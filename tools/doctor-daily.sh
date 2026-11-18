@@ -47,6 +47,6 @@ log "rc=$rc issues=$(wc -l < "$CUR") new=$(echo -n "$NEW" | grep -c .)"
 if [ "$rc" -ne 0 ] || [ -n "$NEW" ]; then
   MSG="doctor 体检：rc=$rc，问题 $(wc -l < "$CUR") 条，新增：
 $(echo "$NEW" | head -10)"
-  [ -f "$W/tools/notify.sh" ] && timeout 90 bash "$W/tools/notify.sh" --alert "$MSG" >/dev/null 2>&1 || true
+  [ -f "$W/tools/notify.sh" ] && timeout 90 bash "$W/tools/notify.sh" --digest "$MSG" >/dev/null 2>&1 || true
 fi
 exit 0

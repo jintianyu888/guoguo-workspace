@@ -82,7 +82,11 @@ if [ -n "$ALERTS" ]; then
   echo "[$(date '+%F %T')] $ALERTS" >> "$W/state/security-alerts.md"
   MSG="🚨【备份/安全提醒】
 $ALERTS"
-  timeout 40 bash "$W/tools/notify.sh" --alert "$MSG" >/dev/null 2>&1 || true
+  if [ "${RED:-0}" = "1" ]; then
+    timeout 40 bash "$W/tools/notify.sh" --alert "$MSG" >/dev/null 2>&1 || true
+  else
+    timeout 40 bash "$W/tools/notify.sh" --digest "$MSG" >/dev/null 2>&1 || true
+  fi
 fi
 
 # ⑥ 磁盘水位硬闸（2026-11-07 #222 主公批准）：85% 清泄漏、92% 深度清理

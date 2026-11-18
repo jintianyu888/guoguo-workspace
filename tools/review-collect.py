@@ -73,6 +73,14 @@ def main():
         loop["tally"] = {"voting_seats": voting, "got": got, "need": need,
                          "pass": npass, "revise": nrev, "reject": nrej, "state": state}
         json.dump(loop, open(loop_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        # 卡住检测：投放超过 12h 仍无人读票 -> 只提醒一次
+        age_h = (datetime.datetime.now() - ct).total_seconds() / 3600.0
+        if not got and age_h >= 12 and not loop.get("stuck_notified"):
+            loop["stuck_notified"] = datetime.datetime.now().strftime("%F %T")
+            json.dump(loop, open(loop_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+            head = "【对审卡住】%s 投放 %d 小时 0 票" % (loop.get("topic"), int(age_h))
+            tail = "inbox 是被动目录，不会自己叫醒管家；请用 sessions_send 催办或降级为自审"
+            subprocess.run(["bash", NOTIFY, head + chr(10) + tail], timeout=60)
         if got:
             reports.append((loop.get("topic"), state, got))
     if reports:

@@ -122,6 +122,17 @@
     text-shadow:0 0 9px rgba(120,255,180,.85);pointer-events:none;box-sizing:border-box}
   #ocTop .ocSEG .ocDot,#ocIdle .ocSEG .ocDot{width:7px;height:7px;border-radius:50%;background:#7dffb0;
     box-shadow:0 0 9px #7dffb0;animation:ocPulse 1.1s ease-in-out infinite;flex:0 0 auto}
+  /* v4.5.5 状态徽标：居中放大，备份=黄，告警=红 */
+  #ocTop .ocSEG,#ocIdle .ocSEG{left:50%;top:50%;transform:translate(-50%,-50%);height:calc(100% - 4px);padding:0 16px;border-radius:7px;border-right:none;border:1px solid rgba(140,255,190,.45);background:linear-gradient(180deg,rgba(6,32,16,.96),rgba(3,20,10,.96));font:700 15px/1 ui-monospace,Consolas,monospace;letter-spacing:.6px;max-width:78%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-shadow:0 0 18px rgba(40,220,110,.32),inset 0 0 14px rgba(60,255,140,.10)}
+  #ocTop .ocSEG .ocDot,#ocIdle .ocSEG .ocDot{width:8px;height:8px}
+  #ocTop .ocSEG.k-bak,#ocIdle .ocSEG.k-bak{color:#ffe9b0;border-color:rgba(255,200,66,.6);background:linear-gradient(180deg,rgba(58,42,6,.96),rgba(30,22,3,.96));box-shadow:0 0 18px rgba(255,190,40,.38),inset 0 0 14px rgba(255,205,70,.14);text-shadow:0 0 10px rgba(255,214,102,.85)}
+  #ocTop .ocSEG.k-bak .ocDot,#ocIdle .ocSEG.k-bak .ocDot{background:#ffd24a;box-shadow:0 0 10px #ffd24a}
+  #ocTop .ocSEG.k-alert,#ocIdle .ocSEG.k-alert{color:#ffdede;border-color:rgba(255,92,92,.62);background:linear-gradient(180deg,rgba(64,10,12,.96),rgba(34,5,7,.96));box-shadow:0 0 20px rgba(255,70,70,.45),inset 0 0 14px rgba(255,90,90,.16);text-shadow:0 0 10px rgba(255,120,120,.9)}
+  #ocTop .ocSEG.k-alert .ocDot,#ocIdle .ocSEG.k-alert .ocDot{background:#ff5b5b;box-shadow:0 0 10px #ff5b5b}
+  /* v4.5.15 状态改整行文字后按状态着色（备份黄 / 告警红 / 其它绿） */
+  .ocBox.st-bak .ocMV,.ocBox.st-bak .ocMVT{color:#ffe9b0 !important;text-shadow:0 0 9px rgba(255,214,120,.5)}
+  .ocBox.st-alert .ocMV,.ocBox.st-alert .ocMVT{color:#ffb3b3 !important;text-shadow:0 0 9px rgba(255,92,92,.55)}
+  .ocBox.st-act .ocMV,.ocBox.st-act .ocMVT{color:#c8ffdc !important;text-shadow:0 0 8px rgba(108,237,140,.45)}
   /* v4.1 上下两排大窗改为撑满可用高度（原来固定 --winH，底部会剩一条空白） */
   body.hud .main{min-height:0;align-items:stretch}
   body.hud .main > .panel{height:100% !important;min-height:0}
@@ -844,6 +855,13 @@ pre.opsout{margin:0;padding:13px 16px;overflow:auto;flex:1 1 auto;min-height:180
 .opsside-hd{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:12px;font-weight:650;color:#bff7cd}
 .opsside-sub{font-size:11px;color:var(--dim);font-weight:400}
 .opsside-hd button{font:600 11px/1 inherit;background:#0e3a19;color:#cdf9d8;border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer}
+  /* v4.5.5 运维台标题：版本号不再压住「复制」按钮 */
+  h2.opsside-hd{overflow:hidden}
+  h2.opsside-hd #opsside-title{flex:0 0 auto;white-space:nowrap}
+  h2.opsside-hd .opsside-sub{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  h2.opsside-hd > span[style*="flex:1"]{flex:0 0 6px !important;width:6px !important;min-width:0 !important}
+  h2.opsside-hd .ver{flex:0 0 auto;margin-left:0;white-space:nowrap;font:700 11.5px/1 ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums;color:#9dffc6;background:rgba(28,110,58,.22);border:1px solid rgba(120,255,180,.26);border-radius:5px;padding:3px 6px}
+  h2.opsside-hd button{flex:0 0 auto;white-space:nowrap}
 .opsside .opsbar{border-top:0;padding:6px 8px;flex-wrap:wrap;gap:5px}
 .opsside pre.opsout{flex:1 1 auto;min-height:60px;padding:9px 14px;font-size:12px;line-height:1.62;border-top:1px solid var(--line)}
 .opsside .opsgroups{flex:0 0 auto;max-height:206px}
@@ -852,6 +870,17 @@ pre.opsout{margin:0;padding:13px 16px;overflow:auto;flex:1 1 auto;min-height:180
 .gwver{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 .gwver.ok{color:#4be973}
 .gwver.up{color:#58ea7c;font-weight:700}
+
+/* v4.5.9 运维台标题行：不许顶出框 */
+h2.opsside-hd{overflow:hidden}
+h2.opsside-hd>span,h2.opsside-hd>a,h2.opsside-hd>button{flex:0 0 auto}
+h2.opsside-hd>span[style*="flex:1"]{flex:1 1 auto !important;min-width:0}
+.opsside-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1500px){#opsside-sub{display:none}}
+
+/* v4.5.9 状态徽标内的真进度条（替换 === 伪进度），比字符条更长更好认 */
+.ocSEG .sbar{display:inline-block;width:150px;height:8px;border-radius:999px;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);overflow:hidden;vertical-align:middle;flex:0 0 auto}
+.ocSEG .sbar>i{display:block;height:100%;border-radius:999px;background:currentColor;opacity:.92;transition:width .6s ease}
 
 /* v3.8.3 八窗等宽等高：底部行间距与主区一致 */
 .bottomrow{display:flex !important;gap:10px !important;flex:1 1 0 !important;min-height:0}
@@ -950,6 +979,21 @@ h2 #errreport.rbtn.ttlbtn{width:auto;min-width:50px;padding:0 7px;font-size:11px
 .opsside-hd a.lanip::before{content:"局域网";font-family:inherit;font-size:10px;opacity:.7;margin-right:5px;letter-spacing:0}
 .opsside-hd a.lanip:hover{background:rgba(28,224,77,.28);color:#a7f4ba;border-color:rgba(28,224,77,.6)}
 .opsside-hd a.lanip:active{transform:translateY(1px)}
+  /* v4.5.7 局域网 / 内网 两个地址统一同一套胶囊格式 */
+  .opsside-hd a.lanip,
+  .opsside-hd a.gwlink{display:inline-flex;align-items:center;font:600 11.5px/1 ui-monospace,Menlo,Consolas,monospace;color:#6fed8e;text-decoration:none;background:rgba(28,224,77,.14);border:1px solid rgba(28,224,77,.35);border-radius:999px;padding:3px 9px;letter-spacing:.2px;font-variant-numeric:tabular-nums}
+  .opsside-hd a.gwlink::before{content:"内网";font-family:inherit;font-size:10px;opacity:.7;margin-right:5px;letter-spacing:.5px}
+  .opsside-hd a.lanip:hover,
+  .opsside-hd a.gwlink:hover{background:rgba(28,224,77,.28);color:#a7f4ba;border-color:rgba(28,224,77,.6)}
+  .opsside-hd a.lanip:active,
+  .opsside-hd a.gwlink:active{transform:translateY(1px)}
+  /* v4.5.8 运维台节点状态：长期离线照样列出（不刷红徽标，但不许消失） */
+  .nodelist{display:none;flex-wrap:wrap;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);font:600 11.5px/1 ui-monospace,Consolas,monospace;color:var(--dim)}
+  .nodelist.on{display:flex}
+  .nodelist .nd{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);white-space:nowrap}
+  /* v4.5.10 主公令：离线/长期离线徽标不再用红/黄特殊色，与其他徽标同色同底（状态靠文字与圆点表达） */
+  .nodelist .nd.off,.nodelist .nd.stale{color:inherit;border-color:rgba(255,255,255,.12);background:transparent}
+  .nodelist .nd .d{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
 
 /* ===== v3.9.96 科幻 HUD 皮肤（默认关闭，点右上 HUD 开启） ===== */
 #hudcanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0;transition:opacity .6s ease}
@@ -1202,12 +1246,12 @@ body.hud .hudbtn{background:rgba(28,227,78,.22);border-color:#27e456;color:#e9fc
 body.hud .num,body.hud .clock,body.hud #clock{text-shadow:0 0 8px rgba(28,227,78,.45)}
 /* v4.2 三级变暗：越久越暗（省电、防烧屏），一动鼠标立刻亮回来并播放唤醒特效 */
 body.hud .wrap{transition:filter 1.6s ease}
-body.hud.dim1 .wrap{filter:brightness(.52) saturate(.80)}
-body.hud.dim2 .wrap{filter:brightness(.30) saturate(.62)}
-body.hud.dim3 .wrap{filter:brightness(.14) saturate(.45)}
-body.hud.dim1 #ocIdle{filter:brightness(.52) saturate(.80)}
-body.hud.dim2 #ocIdle{filter:brightness(.30) saturate(.62)}
-body.hud.dim3 #ocIdle{filter:brightness(.14) saturate(.45)}
+body.hud.dim1 .wrap{filter:brightness(.62) saturate(.86)}
+body.hud.dim2 .wrap{filter:brightness(.48) saturate(.74)}
+body.hud.dim3 .wrap{filter:brightness(.34) saturate(.66)}
+body.hud.dim1 #ocIdle{filter:brightness(.62) saturate(.86)}
+body.hud.dim2 #ocIdle{filter:brightness(.48) saturate(.74)}
+body.hud.dim3 #ocIdle{filter:brightness(.34) saturate(.66)}
 /* v4.5 唤醒翻牌：整屏碎成小牌，从屏幕左上角按行向下逐片翻走（原 v4.4 自鼠标落点向外扩散） */
 #wakefx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
 #wakefx canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -1269,6 +1313,28 @@ body.hud.hud-idle #hudcanvas{opacity:0}
     border:1px solid rgba(80,255,170,.5);border-radius:7px;background:rgba(60,255,170,.14);white-space:nowrap;
     transition:background .15s,color .15s,border-color .15s}
   .panel h2 .tfs:hover{opacity:1;color:#dcecff;background:rgba(80,160,255,.26);border-color:rgba(150,200,255,.55)}
+
+/* v4.5.10 运维台标题行（果果 2026-11-18 视觉核退回后重做）：
+   1) 让步顺序反过来——窄屏先撤两个地址胶囊（在面板里看面板，地址冗余），不再牺牲版本号
+   2) 版本胶囊永不归零：min-width 兜底 + 拿不到版本显示 v?
+   3) 「复制」排最后才让位 */
+h2.opsside-hd{gap:6px !important;overflow:hidden}
+h2.opsside-hd>a.lanip,h2.opsside-hd>a.gwlink{flex:0 0 auto !important;white-space:nowrap !important}
+h2.opsside-hd>span.gwver{flex:0 0 auto !important;white-space:nowrap !important;min-width:3.4em}
+h2.opsside-hd>span.ver{flex:0 0 auto !important;white-space:nowrap !important}
+h2.opsside-hd>button,#opscopy{flex:0 0 auto !important}
+@media (max-width:1720px){#opsside-sub{display:none !important}}
+@media (max-width:1660px){h2.opsside-hd>a.lanip{display:none !important}}
+@media (max-width:1520px){h2.opsside-hd>a.gwlink{display:none !important}}
+@media (max-width:1400px){#opscopy{display:none !important}}
+
+/* v4.5.11 地址胶囊从运维台迁到「云端模型」标题行（主公 2026-11-18 令），运维台腾出位置显示完整 OC 版本号 */
+.panel.balpanel h2 a.lanip,.panel.balpanel h2 a.gwlink{display:inline-flex;align-items:center;font:600 10.5px/1 ui-monospace,Menlo,Consolas,monospace;color:#6fed8e;text-decoration:none;background:rgba(28,224,77,.14);border:1px solid rgba(28,224,77,.35);border-radius:999px;padding:2px 7px;margin-left:6px;letter-spacing:.2px;white-space:nowrap;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.panel.balpanel h2 a.lanip::before{content:"局域网";font-size:9.5px;opacity:.7;margin-right:4px;letter-spacing:0}
+.panel.balpanel h2 a.gwlink::before{content:"内网";font-size:9.5px;opacity:.7;margin-right:4px;letter-spacing:0}
+.panel.balpanel h2 a.lanip:hover,.panel.balpanel h2 a.gwlink:hover{background:rgba(28,224,77,.28);color:#a7f4ba;border-color:rgba(28,224,77,.6)}
+@media (max-width:1700px){.panel.balpanel h2 a.lanip{display:none !important}}
+@media (max-width:1500px){.panel.balpanel h2 a.gwlink{display:none !important}}
 </style>
 </head>
 <body class="hud">
@@ -1407,13 +1473,14 @@ body.hud.hud-idle #hudcanvas{opacity:0}
     <div class="logbody" id="logbody"></div>
   </div>
   <div class="panel opsside" id="opspanel" data-swap="ops">
-    <h2 class="opsside-hd"><span id="opsside-title">运维台</span><a class="lanip" id="lanip" href="#" target="_blank" rel="noopener" title="局域网登录地址（手机/平板可访问）" style="display:none">—</a><a class="gwlink" id="gwlink" href="#" target="_blank" rel="noopener" title="在新窗口打开面板">—</a><span class="gwver" id="gwver"></span><span class="opsside-sub" id="opsside-sub">实时状态 · 分组动作</span><span style="flex:1"></span><span class="ver" id="ver"></span><button id="opscopy" type="button">复制</button></h2>
+    <h2 class="opsside-hd"><span id="opsside-title">运维台</span><span class="gwver" id="gwver"></span><span class="opsside-sub" id="opsside-sub">实时状态 · 分组动作</span><span style="flex:1"></span><span class="ver" id="ver"></span><button id="opscopy" type="button">复制</button></h2>
     <div class="hermesbar" id="hermesbar" title="Hermes 工作状态（点击查看详情）">
       <span class="dot n" id="hermesdot"></span>
       <span class="hname">Hermes</span>
       <span class="hsum" id="hermessum">检测中…</span>
       <span class="hgo">详情 ›</span>
     </div>
+    <div class="nodelist" id="nodelist"></div>
         <div class="opsgroups onerow">
           <div class="opsg"><div class="opsg-b">
             <span class="ops-left">
@@ -1447,7 +1514,7 @@ body.hud.hud-idle #hudcanvas{opacity:0}
         <div class="termbar" style="display:none" data-retired="v3.9.42"><span class="termtabs"><button class="ttab on" data-ts="1" title="Windows PowerShell（经 WSL 互操作）">PowerShell</button><button class="ttab" data-ts="2" title="Ubuntu / WSL bash 登录 shell">Ubuntu</button><button class="ttab" data-ts="3" title="Windows 命令提示符 cmd.exe">CMD</button></span><span class="termp">$</span><input id="terminput" type="text" spellcheck="false" autocomplete="off" placeholder="在这输入命令，回车执行（记录到 state/work/term-cmd.log）"><button class="opstbtn" id="termsend">执行</button><button class="opstbtn" id="termctrlc" title="发送 Ctrl-C 中断">中断</button><button class="opstbtn" id="termback" title="回到系统运行状态">返回</button><input id="termsecret" type="password" autocomplete="off" spellcheck="false" placeholder="密文输入（不记录/不回显）" style="flex:0 0 150px"><button class="opstbtn" id="termsecsend" title="把密文送入终端并回车（不写日志）">送入</button></div>
   </div>
     <div class="panel balpanel" data-swap="bal">
-    <h2>云端模型<button id="bal-refresh" class="rfbtn" title="立即刷新余额与积分（后台跑抓取，约 3-4 分钟）">⟳</button><span class="tag" id="bal-tag">—</span></h2>
+    <h2>云端模型<a class="lanip" id="lanip" href="#" target="_blank" rel="noopener" title="局域网登录地址（手机/平板可访问）" style="display:none">—</a><a class="gwlink" id="gwlink" href="#" target="_blank" rel="noopener" title="在新窗口打开面板">—</a><button id="bal-refresh" class="rfbtn" title="立即刷新余额与积分（后台跑抓取，约 3-4 分钟）">⟳</button><span class="tag" id="bal-tag">—</span></h2>
     <div class="body" id="balances"></div></div>
 
   <div class="panel localpanel" id="localpanel" data-swap="local">
@@ -3163,24 +3230,39 @@ function renderOpsLive(){
   ];
   el.textContent=lines.join('\n');
 }
+/* v4.5.12 标题行防「半截版本号」：宁可整块隐藏，也不许出现 V4. 这种残废显示 */
+function fitOpsHd(){
+  var hd=document.querySelector('h2.opsside-hd'); if(!hd) return;
+  var v=document.getElementById('ver'), sub=document.getElementById('opsside-sub'), cp=document.getElementById('opscopy');
+  [v,sub,cp].forEach(function(x){ if(x){ x.style.removeProperty('display'); } });
+  var over=function(){ var hr=hd.getBoundingClientRect(), kids=[v,sub,cp]; for(var i=0;i<kids.length;i++){ var k=kids[i]; if(k&&k.offsetWidth&&k.getBoundingClientRect().right>hr.right+0.5) return 9999; } return hd.scrollWidth-hd.clientWidth; };   /* v4.5.15 必须返回像素级溢出量，不能返回哨兵 1——原写法 1<=1 当场 return，整个函数空转 */
+  if(over()<=1) return;
+  if(sub) sub.style.display='none';
+  if(over()<=1) return;
+  if(v) v.style.display='none';
+  if(over()<=1) return;
+  if(cp) cp.style.display='none';
+}
+window.__fitOpsHd=fitOpsHd;   /* v4.5.13 跨 script 块可调用（resize 在另一个块里） */
 function render(){  setTimeout(function(){ try{renderModelSubs(); renderLocal();}catch(e){} },0);
-  var verEl = document.getElementById('ver'); if (verEl && STATE.version) verEl.textContent = 'v' + STATE.version;
+  var verEl = document.getElementById('ver'); if (verEl && STATE.version) verEl.textContent = 'v' + STATE.version; try{ fitOpsHd(); }catch(e){}
   var gl=document.getElementById('gwlink');
   if(gl){ var gwip=(STATE.gateway||{}).lanIp||'127.0.0.1'; gl.textContent=gwip+':8899'; gl.href='http://'+gwip+':8899/'; }
   var gv=document.getElementById('gwver');
   if(gv){
     var gww=STATE.gateway||{}, cur=gww.version||'', lt=gww.latest||'';
+    if(!cur){ gv.textContent='v?'; gv.className='gwver'; gv.title='版本未取到（网关信息暂缺）'; }   /* v4.5.10 窄屏也不许出现空胶囊 */
     if(cur){
       if(lt && String(lt)!==String(cur)){
-        gv.textContent='v'+cur+' → v'+lt;
+        gv.textContent='v'+cur+' → v'+lt;   /* v4.5.11 地址胶囊搬走后恢复完整版本号 */
         gv.className='gwver up';
         gv.title='有新版本 v'+lt+'（当前 v'+cur+'）';
       } else if(lt){
-        gv.textContent='v'+cur+' · 已最新';
+        gv.textContent='v'+cur;   /* v4.5.9 绿色已表意，去掉「已最新」省宽度 */
         gv.className='gwver ok';
         gv.title='当前已是最新版本（'+lt+'）';
       } else {
-        gv.textContent='v'+cur+' · 最新未知';
+        gv.textContent='v'+cur+' · 最新未知';   /* 保持 */
         gv.className='gwver';
         gv.title=gww.latestErr?('检查最新版本失败：'+gww.latestErr):'尚未校验最新版本';
       }
@@ -3745,7 +3827,7 @@ renderClock();
     g.font='400 '+FS+'px ui-monospace,Consolas,"Cascadia Mono",monospace';
     g.textAlign='center'; g.textBaseline='top';
     for(var k=0;k<L;k++){
-      g.fillStyle = (k===L-1) ? '#d8ffe6' : '#1ce34e';
+      g.fillStyle = (k===L-1) ? '#f4fff9' : '#3dff8f';
       g.fillText(GLY[(Math.random()*GLY.length)|0], CW/2, k*CH);
     }
     return t;
@@ -3833,9 +3915,9 @@ renderClock();
     rainDrain=false;
     var G=_rainLimit(), W=G.W, H=G.bot-G.top;
     var el=document.createElement('div'); el.id='rainfx';
-    el.style.cssText='position:fixed;left:0;right:0;top:'+G.top+'px;height:'+H+'px;z-index:69;pointer-events:none;overflow:hidden';   /* v4.64 只落在两条信息条之间，不压条 */
+    el.style.cssText='position:fixed;left:0;right:0;top:'+G.top+'px;height:'+H+'px;z-index:69;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,rgba(48,168,104,.12),rgba(0,0,0,0) 72%)';   /* v4.64 只落在两条信息条之间，不压条 */
     var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-    cv.style.cssText='width:'+W+'px;height:'+H+'px;opacity:.72';
+    cv.style.cssText='width:'+W+'px;height:'+H+'px;opacity:.96';
     el.appendChild(cv); document.body.appendChild(el);
     rainEl=el; rainCv=cv; rainCtx=cv.getContext('2d');
     var CW=8, CH=13, FS=11, L=30, TH=CH*L;
@@ -3863,8 +3945,8 @@ renderClock();
         var x=c*CW, y0=-TH+col.off;
         var hy0=y0+TH;
         g.drawImage(col.tile, x, y0);
-        /* v4.3.4 整列活字：每列随机换行内容，字一直在变 */        if(hy0>-CH*3 && hy0<Hc+CH*3 && now-(col.mutAll||0) > 430+(c%9)*55){          col.mutAll=now;          var tg=col.tile.getContext('2d');          tg.font='400 '+FS+'px ui-monospace,Consolas,"Cascadia Mono",monospace';          tg.textAlign='center'; tg.textBaseline='top';          for(var mm=0;mm<2;mm++){            var kk=(Math.random()*L)|0;            tg.clearRect(0, kk*CH, CW, CH);            tg.fillStyle=(kk===L-1)?'#d8ffe6':'#1ce34e';            tg.fillText(GLY[(Math.random()*GLY.length)|0], CW/2, kk*CH);          }        }
-        /* v4.3.3 字头闪变：最前两个字每 ~90ms 换一次随机字符，像活的 */        var hy=y0+TH;        if(hy>-CH*3 && hy<Hc+CH*3){          if(!col.mg || now-(col.mut||0) > 420+(c%5)*60){ col.mut=now; col.mg=[GLY[(Math.random()*GLY.length)|0], GLY[(Math.random()*GLY.length)|0]]; }          g.save(); g.textAlign='center'; g.textBaseline='top';          g.font='400 '+FS+'px ui-monospace,Consolas,"Cascadia Mono",monospace';          g.fillStyle='#7dffb0'; g.globalAlpha=.72;          var yb1=hy-CH*2; if(yb1>-CH && yb1<Hc) g.fillText(col.mg[1], x+CW/2, yb1);          g.globalAlpha=.96; g.fillStyle='#eafff2';          var yb0=hy-CH; if(yb0>-CH && yb0<Hc) g.fillText(col.mg[0], x+CW/2, yb0);          g.restore();        }
+        /* v4.3.4 整列活字：每列随机换行内容，字一直在变 */        if(hy0>-CH*3 && hy0<Hc+CH*3 && now-(col.mutAll||0) > 430+(c%9)*55){          col.mutAll=now;          var tg=col.tile.getContext('2d');          tg.font='400 '+FS+'px ui-monospace,Consolas,"Cascadia Mono",monospace';          tg.textAlign='center'; tg.textBaseline='top';          for(var mm=0;mm<2;mm++){            var kk=(Math.random()*L)|0;            tg.clearRect(0, kk*CH, CW, CH);            tg.fillStyle=(kk===L-1)?'#f4fff9':'#3dff8f';            tg.fillText(GLY[(Math.random()*GLY.length)|0], CW/2, kk*CH);          }        }
+        /* v4.3.3 字头闪变：最前两个字每 ~90ms 换一次随机字符，像活的 */        var hy=y0+TH;        if(hy>-CH*3 && hy<Hc+CH*3){          if(!col.mg || now-(col.mut||0) > 420+(c%5)*60){ col.mut=now; col.mg=[GLY[(Math.random()*GLY.length)|0], GLY[(Math.random()*GLY.length)|0]]; }          g.save(); g.textAlign='center'; g.textBaseline='top';          g.font='400 '+FS+'px ui-monospace,Consolas,"Cascadia Mono",monospace';          g.fillStyle='#a8ffcb'; g.globalAlpha=.82;          var yb1=hy-CH*2; if(yb1>-CH && yb1<Hc) g.fillText(col.mg[1], x+CW/2, yb1);          g.globalAlpha=.96; g.fillStyle='#eafff2';          var yb0=hy-CH; if(yb0>-CH && yb0<Hc) g.fillText(col.mg[0], x+CW/2, yb0);          g.restore();        }
         if(!col.born && y0+TH>=0){ col.born=true; col.bornAt=now; if(now-rainFlashAt>90){ rainFlashAt=now; rainFlash.push({x:x+CW/2,t:now}); } }
         if(col.bornAt){ var bk=(now-col.bornAt)/800; if(bk<1) _head(g, x+CW/2, Math.max(3,y0+TH-CH*0.5), bk); }
         if(!col.spl && y0+TH>=Hc){
@@ -4285,23 +4367,92 @@ renderClock();
       var dur=Math.max(18, Math.round(half/(speed||55)));
       mv.style.animation='none'; mv.style.transform='translateX(0)';
       void mv.offsetWidth;
-      mv.style.animation='ocMarquee '+dur+'s linear infinite';
+      if(!window.__SEGTXT) mv.style.animation='ocMarquee '+dur+'s linear infinite';
     });
   }
 
   /* v3.9.194 状态徽标：上条(#ocTop)与下条(#ocIdle)同时常驻显示 */
+  /* v4.5.8 徽标合成器：优先级 网关断开 > 节点离线 > 活动流 > 最近告警 */
+  /* 截断顺序：先丢「记录可能不全」，再丢「备份 %」，最后丢「久未恢复」；节点名与「等 N 台」永不丢 */
+function _segMaxW(){ var b=document.getElementById('ocIdle'); var w=b&&b.clientWidth?b.clientWidth:window.innerWidth; return Math.max(160, Math.round(w*0.88)); }
+  function _segFit(parts){
+    var probe=document.createElement('span');
+    probe.style.cssText='position:absolute;left:-9999px;top:-9999px;visibility:hidden;white-space:nowrap;font:700 15px/1 ui-monospace,Consolas,"Cascadia Mono",monospace;letter-spacing:.6px';
+    document.body.appendChild(probe);
+    var alive=parts.map(function(p){ return {t:p.t, drop:p.drop||0}; });
+    var comp=function(){ return alive.map(function(p){ return p.t; }).join(''); };
+    probe.textContent=comp();
+    var maxW=_segMaxW(), order=[1,2,3];
+    for(var i=0;i<order.length && probe.offsetWidth>maxW;i++){
+      var lvl=order[i], kept=[];
+      for(var j=0;j<alive.length;j++){ if(alive[j].drop!==lvl) kept.push(alive[j]); }
+      if(kept.length===alive.length) continue;
+      alive=kept; probe.textContent=comp();
+    }
+    document.body.removeChild(probe);
+    return comp().replace(/\s+·\s+·\s+/g,' · ').replace(/\s{2,}/g,' ').trim();
+  }
+  /* 运维台节点列表：离线节点全部列出，长期离线标黄；与徽标阈值互不影响 */
+  function renderNodeList(list){
+    var box=document.getElementById('nodelist'); if(!box) return;
+    if(!list || !list.length){ box.className='nodelist'; box.innerHTML=''; return; }
+    box.className='nodelist on';
+    box.innerHTML=list.map(function(x){
+      var m=x.agoMin||0;
+      var t=(m>=1440)?((m/1440).toFixed(1)+' 天'):(m>=60?(Math.round(m/60)+' 小时'):(m+' 分'));
+      var cls='nd '+(x.actionable?'off':'stale');
+      var tip='离线起点 '+String(x.since||'未知')+(x.actionable?'':'（超过阈值，不再刷红徽标）');
+      return '<span class="'+cls+'" title="'+tip+'"><i class="d"></i>'+x.node+' 离线 '+t+'</span>';
+    }).join('');
+  }
+  function segCompose(){
+    var na=(window.__NODEALERTS||[]).filter(function(x){ return x.actionable !== false; }), act=window.__ACTSEG||'', actKind=window.__SEGKIND||'';
+    var txt='', kind='';
+    if(window.__GWDOWN){
+      txt='◤ 主脑（网关）无响应 · 重连中 ◢'; kind='alert';
+    } else if(na.length){
+      var n0=na[0];
+      var names=(na.length>1)?(n0.node+' 等 '+na.length+' 台'):n0.node;
+      var ago=(n0.agoMin>=60)?(Math.round(n0.agoMin/60)+' 小时'):(n0.agoMin+' 分');
+      var parts=[{t:'节点离线 '+names+' · '+ago, drop:0}];
+      if(n0.stale) parts.push({t:' · 久未恢复', drop:3});
+      var pm=/(\d+(?:\.\d+)?%)/.exec(act);
+      if(/backup|mirror|bak/i.test(actKind)) parts.push({t:' · 备份 '+(pm?pm[1]:'…'), drop:2});
+      if(window.__NODETRUNC) parts.push({t:' · 记录可能不全', drop:1});
+      txt=_segFit(parts); kind='alert';
+    } else if(act){
+      txt=window.__ACTFULL||window.__SEGTXT||act; kind=actKind||'act';
+    } else {
+      var A=window.__ALERTS||{}, at=String(A.text||'').replace(/\s+/g,' ');
+      var benign=/恢复|解除|已正常|回稳|已恢复|自愈|成功/i.test(at);
+      if(A.n>0 && A.ms && !benign && (Date.now()-A.ms)<30*60000){
+        var am=Math.max(0, Math.round((Date.now()-A.ms)/60000));
+        var what=at?at.replace(/^【|】/g,'').slice(0,30):('告警 '+A.n+' 条');
+        txt=what+' · '+(am<1?'刚刚':am+' 分前'); kind='alert';
+      }
+    }
+    window.__SEGTXT=txt; window.__SEGKIND=txt?kind:'';
+    segBadge();
+  }
   function segBadge(){
+    /* v4.5.15 按主公令：不再单独浮出徽标，状态整行写在信息条里，仍随状态变色 */
     var txt=window.__SEGTXT||'';
     ['ocTop','ocIdle'].forEach(function(id){
       var b=document.getElementById(id); if(!b) return;
-      var el=b.querySelector('.ocSEG');
-      if(!txt){ if(el) el.remove(); var m0=b.querySelector('.ocMV, .ocMVT'); if(m0&&m0.parentNode) m0.parentNode.style.clipPath=''; return; }
-      if(!el){ el=document.createElement('span'); el.className='ocSEG'; b.appendChild(el); }
-      el.style.width='auto';
-      if(el.getAttribute('data-t')!==txt){ el.innerHTML='<i class="ocDot"></i>'+txt; el.setAttribute('data-t',txt); }
-      /* 滚动区让出徽标宽度，避免文字从徽标右侧缝隙钻出来 */
-      var mv=b.querySelector('.ocMV, .ocMVT'); var host=mv&&mv.parentNode;
-      if(host){ host.style.clipPath='inset(0 0 0 '+(el.offsetWidth+2)+'px)'; }
+      var el=b.querySelector('.ocSEG'); if(el) el.remove();
+      var box=b.querySelector('.ocBox')||b;
+      var wasSt=box.classList.contains('st-bak')||box.classList.contains('st-alert')||box.classList.contains('st-act');
+      box.classList.remove('st-bak','st-alert','st-act');
+      var mv=b.querySelector('.ocMV, .ocMVT');
+      if(!txt){ if(mv){ mv.style.animation=''; } if(wasSt && !window.__stClearing){ window.__stClearing=1; setTimeout(function(){ window.__stClearing=0; try{ renderIdle({}); }catch(e){} },100); } return; }  /* 状态结束：恢复跑马灯 */
+      var k=window.__SEGKIND||'act';
+      box.classList.add((k==='alert')?'st-alert':(/bak|backup|mirror/i.test(k))?'st-bak':'st-act');
+      if(mv){
+        var line=txt;
+        if(typeof window.__SEGPCT==='number' && /bak|backup|mirror/i.test(k)) line+='  '+Math.round(window.__SEGPCT)+'%';
+        if(mv.textContent!==line) mv.textContent=line;
+        mv.style.animation='none'; mv.style.transform='translateX(0)';
+      }
     });
   }
 
@@ -4348,6 +4499,7 @@ renderClock();
 
   function renderIdle(d){
     if(!idleEl) idleEl=mkIdle();
+    if(idleEl){ idleEl.style.display='block'; }   /* v4.5.15 先显示再填内容：后面任何异常都不会让整条消失 */
     var txt=buildTickerText(d||{});
     var mv=idleEl.querySelector('.ocMV');
     var t=mkTop();
@@ -4362,6 +4514,11 @@ renderClock();
     if(m){var r=m.getBoundingClientRect(); if(r.width>200){left=Math.round(r.left);width=Math.round(r.width);}}
     idleEl.style.left=left+'px'; idleEl.style.width=width+'px'; idleEl.style.bottom='12px';   /* v3.9.183 与顶部条留白对称 */
     idleEl.style.display='block';
+    window.__ALERTS = {n:(d&&d.alertsToday)||0, ms:(d&&d.alertLastMs)||0, text:(d&&d.alertLastText)||''};
+    window.__NODEALERTS = (d&&d.nodeAlerts)||[];
+    window.__NODETRUNC = !!(d&&d.nodeAlertsTruncated);
+    renderNodeList(window.__NODEALERTS);
+    segCompose();
     requestAnimationFrame(function(){
       var half=mv.scrollWidth/2;
       var dur=Math.max(24, Math.round(half/55));
@@ -4393,22 +4550,29 @@ renderClock();
     if(!actEl) actEl=mk('act');
     var active = d && d.kind && d.kind!=='idle';
     var age = Math.floor(Date.now()/1000) - (d.updated_at||0);
-    if(!active || age>21600){ actEl.style.display='none'; window.__ACTSEG=''; if(!window.__GWDOWN){ window.__SEGTXT=''; segBadge(); } pollIdle(); return; }
+    if(!active || age>21600){ actEl.style.display='none'; window.__ACTSEG=''; window.__SEGPCT=null; if(!window.__GWDOWN){ window.__ACTFULL=''; window.__SEGTXT=''; segCompose(); } pollIdle(); return; }
     var label = KMAP[d.kind] || d.kind;
-    if(d.phase && d.phase.indexOf('演示')<0 && d.phase.indexOf(KMAP[d.kind]||'@@')<0) label += ' · ' + d.phase;
+    /* v4.5.9 「===」这类用字符拼的伪进度不再当文字显示，改为下面的真进度条 */
+    var _ph = String(d.phase||'').replace(/^[=\-#|.*·\s█▇▆▅▄▃▂▁░]+/, '').trim();   /* 去掉 === / --- 之类的字符条前缀 */
+    if(/^[\d.]+%$/.test(_ph)) _ph = '';                                         /* 纯百分比不重复显示，徽标里有真进度条 */
+    if(_ph && _ph.indexOf('演示')<0 && _ph.indexOf(KMAP[d.kind]||'@@')<0) label += ' · ' + _ph;
     var p = (typeof d.percent==='number') ? d.percent : 35;
     /* v3.9.184 系统事件(重启/升级/备份)同步给上下两条信息条 */
-    window.__ACTSEG = label + (typeof d.percent==='number' ? ' ' + Math.round(d.percent) + '%' : '');
-    window.__SEGTXT = window.__ACTSEG; segBadge();
+    var pctTxt = (typeof d.percent==='number') ? (' ' + Math.round(d.percent) + '%') : '';
+    var noteTxt = d.note ? (' · ' + String(d.note).replace(/\s+/g,' ').slice(0,52)) : '';
+    window.__ACTSEG = label + pctTxt;
+    window.__SEGKIND = /fail|error|失败|异常|告警|超时/i.test(label + ' ' + (d.note||'')) ? 'alert' : (d.kind || 'act');
     var t=actEl.querySelector('.ocT');
     if(!t.firstChild){ t.innerHTML='<span class="ocDot"></span>'; }
     t.lastChild ? (t.lastChild.textContent=label) : t.appendChild(document.createTextNode(label));
     if(!t.querySelector('.ocDot')){ t.insertAdjacentHTML('afterbegin','<span class="ocDot"></span>'); }
     var txt=t.textContent; t.innerHTML='<span class="ocDot"></span>'+label;
     actEl.querySelector('.ocP').textContent = p + '%';
+    window.__SEGPCT = (typeof d.percent==='number') ? d.percent : null;   /* v4.5.9 供徽标画真进度条 */
     actEl.querySelector('.ocN').textContent = d.note || '';
     var mins = Math.floor((Date.now()/1000 - (d.started_at||0))/60);
     actEl.querySelector('.ocE').textContent = d.started_at ? ('已 '+mins+' 分') : '';
+    window.__ACTFULL = label + pctTxt + noteTxt + (d.started_at ? (' · 已 ' + mins + ' 分') : ''); window.__SEGTXT = window.__ACTFULL; segCompose();
     actEl.querySelector('.ocFill').style.width = p + '%';
     place(actEl);
     /* v3.9.188 不再单开第三条：系统事件并入上下两条信息条，两处同步 */
@@ -4425,7 +4589,7 @@ renderClock();
     gwEl.querySelector('.ocN').textContent='面板仍在运行 → 不是整机崩溃';
     gwEl.querySelector('.ocE').textContent=new Date().toLocaleTimeString('zh-CN');
     window.__GWDOWN=1;   /* v3.9.184 上下条同步 */
-    window.__SEGTXT='主脑（网关）无响应 · 重连中'; segBadge();
+    window.__SEGTXT='主脑（网关）无响应 · 重连中'; window.__SEGKIND='alert'; segCompose();
     gwEl.querySelector('.ocFill').style.width='100%';
     place(gwEl);
     /* v3.9.193 离线也不单开第三条：只走上下两条信息条 */
@@ -4435,11 +4599,11 @@ renderClock();
 
   /* v3.9.193 兜底：只要处于系统事件/离线状态，两条信息条每 4 秒强制对齐一次 */
   setInterval(function(){
-    if(window.__GWDOWN || window.__ACTSEG){ segBadge(); pollIdle(); }
+    if(window.__GWDOWN || window.__ACTSEG){ segCompose(); pollIdle(); }
   }, 4000);
 
   function pollIdle(){
-    fetch('/api/ticker',{cache:'no-store'}).then(function(r){return r.json();}).then(renderIdle).catch(function(){});
+    fetch('/api/ticker',{cache:'no-store'}).then(function(r){return r.json();}).then(renderIdle).catch(function(err){ try{ console.error('[ticker]',err); }catch(_){ } try{ renderIdle({}); }catch(e){ try{ window.__idleErr=(e&&e.message)||String(e); console.error('[renderIdle]',e); }catch(__){} } });   /* v4.5.11 失败也画占位，条子不消失 */
   }
 
   function pollAct(){
@@ -4447,15 +4611,18 @@ renderClock();
   }
   function pollGw(){
     fetch('/api/gw',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
-      if(d && d.ok){ gwDown=0; if(window.__GWDOWN){ window.__GWDOWN=0; window.__SEGTXT=window.__ACTSEG||''; segBadge(); pollIdle(); } if(gwEl) gwEl.style.display='none'; return; }
+      if(d && d.ok){ gwDown=0; if(window.__GWDOWN){ window.__GWDOWN=0; window.__SEGTXT=window.__ACTSEG||''; segCompose(); pollIdle(); } if(gwEl) gwEl.style.display='none'; return; }
       gwDown++; if(gwDown>=2) renderGw();
     }).catch(function(){ gwDown++; if(gwDown>=2) renderGw(); });
   }
 
   pollAct(); setTimeout(pollAct,1200); setInterval(pollAct,15000);
   setTimeout(pollGw,4000); setInterval(pollGw,10000);
+  /* v4.5.11 两条信息条改为「启动即建」：此前是懒建（等 /api/ticker 回来才建），接口一断或报错整条就消失 */
+  try { idleEl = mkIdle(); mkTop(); renderIdle({}); } catch (e) { }   /* v4.5.14 必须接住返回值：否则 renderIdle 里 !idleEl 又会建第二个 #ocIdle（重复 id） */
+  [300,1200].forEach(function(ms){ setTimeout(function(){ try{ window.__fitOpsHd&&window.__fitOpsHd(); }catch(e){} }, ms); });
   setTimeout(pollIdle,2500); setInterval(pollIdle,8000);   /* v3.9.186 8 秒刷新，系统事件能及时同步到上下条 */
-  window.addEventListener('resize',function(){ if(actEl&&actEl.style.display!=='none') place(actEl); if(gwEl&&gwEl.style.display!=='none') place(gwEl); });
+  window.addEventListener('resize',function(){ if(actEl&&actEl.style.display!=='none') place(actEl); if(gwEl&&gwEl.style.display!=='none') place(gwEl); setTimeout(function(){ try{ window.__fitOpsHd&&window.__fitOpsHd(); }catch(e){} }, 80); });
 })();
 </script>
 

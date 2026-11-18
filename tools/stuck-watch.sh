@@ -10,5 +10,5 @@ if printf '%s' "$OUT" | grep -qE '🔴|💤'; then
   # 并把内容截断到 900 字，避免超长导致 400。
   MSG="🕒 卡住检测 $(date '+%H:%M')
 $(printf '%s' "$OUT" | head -c 900)"
-  bash $W/tools/notify.sh --alert "$MSG" >/dev/null 2>&1
+  bash $W/tools/notify.sh --digest "$MSG" >/dev/null 2>&1
 fi

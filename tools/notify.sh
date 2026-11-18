@@ -40,7 +40,11 @@ send_via_webhook() {
 }
 
 NOTIFY_ALERT="${NOTIFY_ALERT:-0}"
+NOTIFY_DIGEST="${NOTIFY_DIGEST:-0}"
 if [ "${1:-}" = "--alert" ]; then NOTIFY_ALERT=1; shift; fi
+# 2026-11-18 主公令：分级。--p0/--alert=立即推；--digest=P1 进队列 21:00 汇总；默认=普通通告
+if [ "${1:-}" = "--p0" ]; then NOTIFY_ALERT=1; shift; fi
+if [ "${1:-}" = "--digest" ]; then NOTIFY_DIGEST=1; shift; fi
 # 2026-10-31 主公令：所有「通告」默认交给维护管家（account=maint）；--to-owner 可强制回主公
 NOTIFY_OWNER=0
 if [ "${1:-}" = "--to-owner" ]; then NOTIFY_OWNER=1; shift; fi
@@ -173,11 +177,20 @@ fi
 ALERT_PENDING=0
 [ "$NOTIFY_ALERT" = "1" ] && ALERT_PENDING=1 && ledger_alert "$MSG"
 SENT=0
+if [ "$NOTIFY_DIGEST" = "1" ]; then
+  _norm=$(printf "%s" "$MSG" | sed -E 's/[0-9]{4}-[0-9]{2}-[0-9]{2}//g; s/[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?//g; s/[0-9]+//g')
+  _k=$(printf "%s" "$_norm" | sha256sum | cut -c1-16)
+  python3 /home/j/.openclaw/workspace/tools/alert-digest-add.py "$_k" "$MSG" >/dev/null 2>&1
+  echo "$(date "+%F %T") digest-queued($_k) ${MSG:0:50}" >> /home/j/.openclaw/workspace/state/alerts/digest.log
+  exit 0
+fi
+
 if [ "$ALERT_PENDING" = "1" ]; then
   # 2026-11-02 双审新增：告警冷却——同一文本 20 分内只发一次，防 flapping 刷屏
   ALERT_COOLDOWN=${NOTIFY_ALERT_COOLDOWN:-1200}
   if [ "$ALERT_COOLDOWN" -gt 0 ] 2>/dev/null; then
-    _h=$(printf '%s' "$MSG" | sha256sum | cut -c1-16)
+      _norm=$(printf "%s" "$MSG" | sed -E 's/[0-9]{4}-[0-9]{2}-[0-9]{2}//g; s/[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?//g; s/[0-9]+//g')
+    _h=$(printf '%s' "$_norm" | sha256sum | cut -c1-16)
     _kf=/home/j/.openclaw/workspace/state/alerts/.cooldown
     _now=$(date +%s)
     _last=$(awk -v k="$_h" '$1==k{print $2}' "$_kf" 2>/dev/null | tail -1)

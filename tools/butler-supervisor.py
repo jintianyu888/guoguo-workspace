@@ -74,7 +74,7 @@ def plan_block_ok(agent, base):
 def push(msg):
     # 2026-11-08 20:40：监督消息属异常才响，走告警 webhook 线（普通 maint 线 20:00/20:20 连续发送失败）；
     # 截断 900 字避免超长 400。
-    subprocess.run(["bash", os.path.join(WS, "tools/notify.sh"), "--alert", str(msg)[:900]],
+    subprocess.run(["bash", os.path.join(WS, "tools/notify.sh"), "--digest", str(msg)[:900]],
                    capture_output=True, text=True, timeout=60)
 
 finds = []
@@ -130,7 +130,7 @@ fails = []
 try:
     c = sqlite3.connect(CDB); c.row_factory = sqlite3.Row
     since = int((time.time()-90*60)*1000)
-    rows = c.execute("select r.job_id,r.status,r.error_text,r.started_at_ms,j.job_json from cron_run_receipts r join cron_jobs j on j.job_id=r.job_id where r.started_at_ms>=? and r.status!='ok' order by r.started_at_ms desc limit 20",(since,)).fetchall()
+    rows = c.execute("select r.job_id,r.status,r.error_text,r.started_at_ms,j.job_json from cron_run_receipts r join cron_jobs j on j.job_id=r.job_id where r.started_at_ms>=? and r.status not in ('ok','running','started') order by r.started_at_ms desc limit 20",(since,)).fetchall()
     c.close()
     seen=set()
     for r in rows:

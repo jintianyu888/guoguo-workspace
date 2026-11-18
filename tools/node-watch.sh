@@ -70,9 +70,9 @@ while IFS=$'\t' read -r kind msg; do
   MSG=$(printf '%b' "$msg")
   log "SEND[$kind] $(echo "$MSG" | head -1)"
   if [ "$kind" = "alert" ] || echo "$MSG" | grep -q '【节点恢复】'; then
-    timeout 90 bash "$W/tools/notify.sh" --alert "$MSG" >/dev/null 2>&1 || { log "notify 失败(alert)"; echo "[$(date '+%F %T')] NOTIFY-FAIL $kind $MSG" >> "$ST/failed.log"; }
+    timeout 90 bash "$W/tools/notify.sh" --digest "$MSG" >/dev/null 2>&1 || { log "notify 失败(alert)"; echo "[$(date '+%F %T')] NOTIFY-FAIL $kind $MSG" >> "$ST/failed.log"; }
   else
-    timeout 90 bash "$W/tools/notify.sh" "$MSG" >/dev/null 2>&1 || { log "notify 失败(info)"; echo "[$(date '+%F %T')] NOTIFY-FAIL $kind $MSG" >> "$ST/failed.log"; }
+    timeout 90 bash "$W/tools/notify.sh" --digest "$MSG" >/dev/null 2>&1 || { log "notify 失败(info)"; echo "[$(date '+%F %T')] NOTIFY-FAIL $kind $MSG" >> "$ST/failed.log"; }
   fi
 done < "$ST/.msgs"
 exit 0

@@ -32,7 +32,8 @@ A 机（Windows+WSL2，7900X / 64G（WSL 分 48G）/ RTX 3070 8G）跑网关与 
 
 ## 2. 模型与排工
 - 别名：DeepSeek=v4-pro；fast=deepseek-flash；local=qwen3.5:9b；local-14b=qwen3.5:9b-fast；kimi=kimi-for-coding；kimi-review=k3-256k（2026-11-02 已修失效别名）。
-- 默认链：flash → glm-5.3-flash → glm-5.3 → kimi-for-coding → v4-pro → qwen3.5:9b。
+- 默认链（2026-11-18 改）：flash → glm-5.3-flash → glm-5.3 → minimax/MiniMax-M3.1-Flash-Preview → ollama/gpt-oss:20b；kimi 额度耗尽期间不入任何链。
+- 集中度口径：按近 7 天**调用量**占比判 45%（按管家个数算会假绿：个数 39% 对应真实调用 86%）。工具 `python3 tools/model-pool-model.py`（越线 rc=2），每日 09:10 `oc-model-pool.timer` 越线才推。研究详见 docs/模型机制研究-20261118.md，治理流程见共享技能 model-pool-governance。
 - 分工：日常 flash；重活 v4-pro；零成本巡检本地 9b；14b 只兜底。
 - 评审池唯一真源：workspace-model/state/model-warden/dispatch-rules.json；只取旗舰、随机两家不同厂商、禁同配对连用；真跑完判据 rc=0 且输出 >80B 且非报错文本。
 - 接替表 docs/备用模型接替表.md；新模型准入 python3 tools/model-eval.py <model> quick。

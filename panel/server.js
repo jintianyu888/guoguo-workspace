@@ -2170,10 +2170,48 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { out.dbErr = String(e.message || e).slice(0, 60); }
     try {
       const fs = require('fs');
-      const p = '/home/j/.openclaw/workspace/state/alerts/alerts.jsonl';
-      const day = new Date().toISOString().slice(0, 10);
-      const lines = fs.readFileSync(p, 'utf8').trim().split('\n').slice(-400);
+      const p = process.env.INFOWIN_ALERTS || '/home/j/.openclaw/workspace/state/alerts/alerts.jsonl';
+      const nowD = new Date();
+      const day = nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0') + '-' + String(nowD.getDate()).padStart(2, '0');
+      const all = fs.readFileSync(p, 'utf8').trim().split('\n');
+      const WIN = 5000;
+      const lines = all.slice(-WIN);
       out.alertsToday = lines.filter(l => l.indexOf(day) >= 0).length;
+      out.nodeAlertsTruncated = all.length > WIN;
+      try { const _last = JSON.parse(lines[lines.length-1]); if (_last && _last.ts) out.alertLastMs = Date.parse(_last.ts); if (_last && _last.text) out.alertLastText = String(_last.text).split('\n')[0].replace(/\s+/g,' ').slice(0,60); } catch (e) {}
+      try {
+        /* v4.5.8 按节点配对：【节点离线】X /【节点恢复】X，同节点以最后一条为准；只输出当前离线 */
+        const RX_OFF = /【节点离线】\s*([A-Za-z0-9_-]+)/;
+        const RX_STILL = /【节点仍离线】\s*([A-Za-z0-9_-]+)/;
+        const RX_ON = /【节点恢复】\s*([A-Za-z0-9_-]+)/;
+        const st = new Map();
+        for (const ln of lines) {
+          let ts = 0, m = RX_OFF.exec(ln), still = false, on = false;
+          if (!m) { const m2 = RX_STILL.exec(ln); if (m2) { m = m2; still = true; } }
+          if (!m) { const m3 = RX_ON.exec(ln); if (m3) { m = m3; on = true; } }
+          if (!m) continue;
+          try { ts = Date.parse(JSON.parse(ln).ts) || 0; } catch (e) {}
+          if (still) {
+            /* 果果 2026-11-18：仍离线只确认状态，绝不刷新起点（起点只由【节点离线】设定，无 continue 兜底） */
+            const prevS = st.get(m[1]);
+            if (!prevS || prevS.online) st.set(m[1], { node: m[1], online: false, ts: ts });
+          } else if (on) {
+            st.set(m[1], { node: m[1], online: true, ts: ts });
+          } else {
+            st.set(m[1], { node: m[1], online: false, ts: ts });
+          }
+        }
+        const RED_HOURS = Number(process.env.INFOWIN_NODE_RED_HOURS || 24);
+        out.nodeRedHours = RED_HOURS;
+        const nowMs = Date.now();
+        out.nodeAlerts = [...st.values()].filter(x => !x.online).map(x => ({
+          node: x.node,
+          since: x.ts ? new Date(x.ts).toISOString() : null,
+          agoMin: x.ts ? Math.max(0, Math.round((nowMs - x.ts) / 60000)) : 0,
+          stale: !x.ts || (nowMs - x.ts) >= 6 * 3600 * 1000,
+          actionable: !!x.ts && (nowMs - x.ts) < RED_HOURS * 3600 * 1000
+        })).sort((a, b) => b.agoMin - a.agoMin);
+      } catch (e) { out.nodeAlerts = []; }
     } catch (e) {}
     try {
       /* v3.9.159 活跃管家 + 下一个计划任务，喂底部跑马灯 */
