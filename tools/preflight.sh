@@ -27,8 +27,18 @@ case "$ACT" in
     ok "放行删除 $TGT (${sz:-?}MB)；请用 mv 到 _quarantine 或回收站，不要 rm -rf"
     ;;
   cron)
+    # v2 2026-11-19：改为「基线增量」闸门。老规则要求 0 重叠，而全舰队长期有几十处历史重叠，
+    # 结果闸门永远红、天天被绕过——等于没有闸门。现在只拦「比基线更多」的新增重叠。
     out=$(cd "$W" && timeout 120 python3 tools/schedule-plan.py overlaps 2>&1 | tail -1)
-    case "$out" in *'0 处重叠'*) ok "放行：调度 $out";; *) die "改 cron 后出现重叠: $out";; esac
+    cur=$(printf '%s' "$out" | sed -n 's/.*合计 \([0-9][0-9]*\) 处重叠.*/\1/p')
+    [ -z "$cur" ] && cur=0
+    bl=$W/state/work/cron-overlap-baseline.txt
+    if [ ! -f "$bl" ]; then printf '%s' "$cur" > "$bl"; fi
+    base=$(cat "$bl" 2>/dev/null || echo 0)
+    if [ "$cur" -gt "$base" ]; then
+      die "改 cron 后重叠增加: 基线 ${base} -> 现在 ${cur}"
+    fi
+    ok "放行：重叠 ${cur} 处（基线 ${base}，未增加）"
     ;;
   restart)
     if pgrep -fa 'daily-backup|backup-run|nas-push' >/dev/null 2>&1; then die '备份正在运行，禁止重启'; fi

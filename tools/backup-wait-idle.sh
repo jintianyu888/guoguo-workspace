@@ -21,7 +21,7 @@ while :; do
   _t=$(pgrep -x tar -c 2>/dev/null); busy=$((busy + ${_t:-0}))
   _b=$(pgrep -f batch-extract -c 2>/dev/null); busy=$((busy + ${_b:-0}))
   [ "$busy" -eq 0 ] && break
-  [ "$waited" -ge "$MAXWAIT" ] && { echo '[wait-idle] 重活未结束，已等 $((MAXWAIT/60)) 分钟，超时放行（2026-10-25 主公批：不再无限等）'; timeout 30 bash "$W/tools/notify.sh" "⏳ 备份不再等：其它重活 ${MAXWAIT}s 内没结束，已放行开跑" >/dev/null 2>&1 || true; break; }
+  [ "$waited" -ge "$MAXWAIT" ] && { echo "[wait-idle] 重活未结束，已等 $((MAXWAIT/60)) 分钟，超时放行（2026-10-25 主公批：不再无限等）"; timeout 30 bash "$W/tools/notify.sh" "⏳ 备份不再等：其它重活 ${MAXWAIT}s 内没结束，已放行开跑" >/dev/null 2>&1 || true; break; }
   sleep 20; waited=$((waited+20))
 done
 echo "[wait-idle] 就绪（等了 $waited s，锁已持有）"

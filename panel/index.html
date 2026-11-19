@@ -130,9 +130,7 @@
   #ocTop .ocSEG.k-alert,#ocIdle .ocSEG.k-alert{color:#ffdede;border-color:rgba(255,92,92,.62);background:linear-gradient(180deg,rgba(64,10,12,.96),rgba(34,5,7,.96));box-shadow:0 0 20px rgba(255,70,70,.45),inset 0 0 14px rgba(255,90,90,.16);text-shadow:0 0 10px rgba(255,120,120,.9)}
   #ocTop .ocSEG.k-alert .ocDot,#ocIdle .ocSEG.k-alert .ocDot{background:#ff5b5b;box-shadow:0 0 10px #ff5b5b}
   /* v4.5.15 状态改整行文字后按状态着色（备份黄 / 告警红 / 其它绿） */
-  .ocBox.st-bak .ocMV,.ocBox.st-bak .ocMVT{color:#ffe9b0 !important;text-shadow:0 0 9px rgba(255,214,120,.5)}
-  .ocBox.st-alert .ocMV,.ocBox.st-alert .ocMVT{color:#ffb3b3 !important;text-shadow:0 0 9px rgba(255,92,92,.55)}
-  .ocBox.st-act .ocMV,.ocBox.st-act .ocMVT{color:#c8ffdc !important;text-shadow:0 0 8px rgba(108,237,140,.45)}
+  /* v4.6.10 删除三条旧配色 !important：它们会把黄/绿档的深色字强制改回浅色，导致字发糊 */
   /* v4.1 上下两排大窗改为撑满可用高度（原来固定 --winH，底部会剩一条空白） */
   body.hud .main{min-height:0;align-items:stretch}
   body.hud .main > .panel{height:100% !important;min-height:0}
@@ -140,7 +138,7 @@
   body.hud .bottomrow > .panel{height:100% !important;min-height:0}
   /* v4.0.2 上下两条信息条：左右各留 20px（与内容同边距），宽度由 left/right 决定，永不溢出小脚标 */
   /* 关键：信息条改成 .wrap 内的绝对定位，跟内容一起做防烧屏位移，永远严格对齐、不溢出 */
-  body.hud #ocTop{position:absolute !important;left:20px !important;right:20px !important;width:auto !important;top:12px !important;margin:0 !important;box-sizing:border-box}
+  body.hud #ocTop{position:fixed !important;left:20px !important;right:20px !important;width:auto !important;top:12px !important;margin:0 !important;box-sizing:border-box;z-index:100000 !important}
   body.hud #ocIdle{position:absolute !important;left:20px !important;right:20px !important;width:auto !important;bottom:14px !important;top:auto !important;margin:0 !important;box-sizing:border-box}
   /* 内容区同样左右 20px，和两条信息条严格对齐 */
   /* v4.1 上下边距按信息条实际高度算：上条 12~38、下条 1400~1426，各留 8px 间隙，剩下的全给两排大窗 */
@@ -1246,12 +1244,12 @@ body.hud .hudbtn{background:rgba(28,227,78,.22);border-color:#27e456;color:#e9fc
 body.hud .num,body.hud .clock,body.hud #clock{text-shadow:0 0 8px rgba(28,227,78,.45)}
 /* v4.2 三级变暗：越久越暗（省电、防烧屏），一动鼠标立刻亮回来并播放唤醒特效 */
 body.hud .wrap{transition:filter 1.6s ease}
-body.hud.dim1 .wrap{filter:brightness(.62) saturate(.86)}
-body.hud.dim2 .wrap{filter:brightness(.48) saturate(.74)}
-body.hud.dim3 .wrap{filter:brightness(.34) saturate(.66)}
-body.hud.dim1 #ocIdle{filter:brightness(.62) saturate(.86)}
-body.hud.dim2 #ocIdle{filter:brightness(.48) saturate(.74)}
-body.hud.dim3 #ocIdle{filter:brightness(.34) saturate(.66)}
+body.hud.dim1 .wrap{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat)) brightness(.80) saturate(.92)}   /* v4.6.10 补回主题色相：原规则覆盖了 .wrap 的主题滤镜，变暗时颜色会跳 */
+body.hud.dim2 .wrap{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat)) brightness(.68) saturate(.86)}   /* v4.6.10 补回主题色相：原规则覆盖了 .wrap 的主题滤镜，变暗时颜色会跳 */
+body.hud.dim3 .wrap{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat)) brightness(.54) saturate(.80)}   /* v4.6.10 补回主题色相：原规则覆盖了 .wrap 的主题滤镜，变暗时颜色会跳 */
+body.hud.dim1 #ocIdle{filter:brightness(.80) saturate(.92)}
+body.hud.dim2 #ocIdle{filter:brightness(.68) saturate(.86)}
+body.hud.dim3 #ocIdle{filter:brightness(.54) saturate(.80)}
 /* v4.5 唤醒翻牌：整屏碎成小牌，从屏幕左上角按行向下逐片翻走（原 v4.4 自鼠标落点向外扩散） */
 #wakefx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
 #wakefx canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -1299,7 +1297,19 @@ body.hud.hud-idle #hudcanvas{opacity:0}
   html.theme-red{--theme-rot:-140deg;--theme-sat:1.05}
   html.theme-purple{--theme-rot:132deg;--theme-sat:1.02}
   html.theme-white{--theme-rot:0deg;--theme-sat:0.08}
-  html{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat))}
+  /* v4.6.6 主题滤镜下放（原挂 html 上，状态条一起被色相矩阵压色）：
+     实测纯黄 #ffd400 过滤镜后只剩 (184,161,59)，反解所需源色 (2.68,0.05,-0.13) 超出 0~1，
+     任何滤色器都造不出真黄。故把滤镜下放到各内容层，状态条豁免。 */
+  .wrap{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat))}
+  body.hud #hudcanvas{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat)) saturate(1.3)}
+  body.hud #hudframe{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat)) drop-shadow(rgba(28,227,78,.55) 0 0 6px)}
+  #hudtick,#hudscan,#ssMenu,#ocActivity{filter:hue-rotate(var(--theme-rot)) saturate(var(--theme-sat))}
+  /* v4.6.9 去优先级对冲：条体已不在任何 filter 祖先下，且 segBadge 内联 filter='none'，
+     这条 !important 属于多余兜底，删掉后颜色仍为真值（work 复核意见 1） */
+  /* v4.6.7 主公 21:11 反馈：两条信息条左侧那条淡光横条就是 .ocShine 扫光，装饰用，直接停掉 */
+  #ocTop .ocShine,#ocIdle .ocShine{display:none !important}
+  /* v4.6.6 下条背景更深一档：它压在页面底部内容上，同一渐变合成出来会比上条亮 */
+  #ocIdle{background:linear-gradient(180deg,rgba(12,34,58,.52),rgba(6,18,32,.44)) !important}
   /* v3.9.189 主题圆点内嵌进「总任务列表」标题右侧，不再浮动挡字 */
   /* 圆点要显示真实颜色：先把页面滤镜反向抵消 */
   #themeDots{filter:saturate(14) hue-rotate(calc(-1 * var(--theme-rot)));display:inline-flex;gap:6px;align-items:center;margin-left:10px;vertical-align:middle}
@@ -3234,14 +3244,39 @@ function renderOpsLive(){
 function fitOpsHd(){
   var hd=document.querySelector('h2.opsside-hd'); if(!hd) return;
   var v=document.getElementById('ver'), sub=document.getElementById('opsside-sub'), cp=document.getElementById('opscopy');
-  [v,sub,cp].forEach(function(x){ if(x){ x.style.removeProperty('display'); } });
-  var over=function(){ var hr=hd.getBoundingClientRect(), kids=[v,sub,cp]; for(var i=0;i<kids.length;i++){ var k=kids[i]; if(k&&k.offsetWidth&&k.getBoundingClientRect().right>hr.right+0.5) return 9999; } return hd.scrollWidth-hd.clientWidth; };   /* v4.5.15 必须返回像素级溢出量，不能返回哨兵 1——原写法 1<=1 当场 return，整个函数空转 */
+  var gw=document.getElementById('gwver'), addr=document.getElementById('opsaddr')||hd.querySelector('.addrpill');
+  [v,sub,cp,gw,addr].forEach(function(x){ if(x){ x.style.removeProperty('display'); } });
+  if(v){ v.style.removeProperty('font-size'); v.style.whiteSpace='nowrap'; }
+  var dotR=document.getElementById('verdot'); if(dotR) dotR.style.display='none';   /* v4.6.13 宽屏/胶囊可见时无点 */
+  var over=function(){ var hr=hd.getBoundingClientRect(), kids=[v,sub,cp,gw,addr]; for(var i=0;i<kids.length;i++){ var k=kids[i]; if(k&&k.offsetWidth&&k.getBoundingClientRect().right>hr.right+0.5) return 9999; } return hd.scrollWidth-hd.clientWidth; };   /* v4.5.15 必须返回像素级溢出量，不能返回哨兵 1——原写法 1<=1 当场 return，整个函数空转 */
+  /* v4.6.12 让位顺序（干活管家转主公令）：副标题 → 地址胶囊 → 复制按钮 → 网关版本胶囊 → 版本药丸降字号。
+     版本药丸(#ver)是排障第一手信息，永不隐藏、永不留 0 宽：最低降到 11px 仍显示完整版本号。 */
   if(over()<=1) return;
   if(sub) sub.style.display='none';
   if(over()<=1) return;
-  if(v) v.style.display='none';
+  if(addr) addr.style.display='none';
   if(over()<=1) return;
   if(cp) cp.style.display='none';
+  if(over()<=1) return;
+  /* v4.6.13 网关版本胶囊让位时留替身信号：胶囊本来承载「有新版本」提示，藏掉会失明，
+     故在 #ver 右上角加 4px 琥珀点（absolute，不占宽度），胶囊回来时自动消失。 */
+  if(gw){
+    var up = gw.classList.contains('up');
+    gw.style.display='none';
+    if(v){
+      v.style.position='relative';
+      var dot=document.getElementById('verdot');
+      if(!dot){
+        dot=document.createElement('span'); dot.id='verdot'; dot.title='OpenClaw 有新版本';
+        dot.setAttribute('aria-label','OpenClaw 有新版本');
+        dot.style.cssText='position:absolute;top:-2px;right:-3px;width:4px;height:4px;border-radius:50%;background:#ffc800;box-shadow:0 0 4px rgba(255,200,0,.85);filter:hue-rotate(calc(-1 * var(--theme-rot))) saturate(1.8)';   /* 运维台在主题色相子树内，不反相会把琥珀点渲染成绿色 */
+        v.appendChild(dot);
+      }
+      dot.style.display = up ? 'block' : 'none';
+    }
+  }
+  if(over()<=1) return;
+  if(v) v.style.fontSize='11px';
 }
 window.__fitOpsHd=fitOpsHd;   /* v4.5.13 跨 script 块可调用（resize 在另一个块里） */
 function render(){  setTimeout(function(){ try{renderModelSubs(); renderLocal();}catch(e){} },0);
@@ -4292,7 +4327,7 @@ renderClock();
     w.style.cssText='position:fixed;z-index:100000;pointer-events:none;display:none';
     w.innerHTML =
       '<div class="ocBox" style="position:relative;overflow:hidden;box-sizing:border-box;height:26px;border-radius:6px;'
-      + 'background:linear-gradient(180deg,rgba(28,92,52,.44),rgba(8,40,20,.30));backdrop-filter:blur(10px) saturate(1.5);-webkit-backdrop-filter:blur(10px) saturate(1.5);'
+      + 'background:linear-gradient(180deg,rgba(44,74,126,.66),rgba(24,48,86,.55));backdrop-filter:blur(10px) saturate(1.5);-webkit-backdrop-filter:blur(10px) saturate(1.5);'
       + 'border:1px solid rgba(150,255,190,.60);'
       + 'box-shadow:0 0 16px rgba(120,255,165,.58),0 0 40px rgba(50,230,95,.28),inset 0 0 14px rgba(140,255,180,.22);">'
       +   '<div class="ocShine" style="background:linear-gradient(90deg,transparent,rgba(188,247,203,.35),transparent)"></div>'
@@ -4342,7 +4377,7 @@ renderClock();
     w.id='ocTop';
     w.className='ocBox';   /* v3.9.175 与底部条同一套发光动画(ocGlow 2.2s) */
     w.style.cssText='position:relative;z-index:2;flex:0 0 26px;height:26px;margin:0 0 8px;overflow:hidden;border-radius:6px;box-sizing:border-box;'
-      + 'background:linear-gradient(180deg,rgba(28,92,52,.44),rgba(8,40,20,.30));backdrop-filter:blur(10px) saturate(1.5);-webkit-backdrop-filter:blur(10px) saturate(1.5);'
+      + 'background:linear-gradient(180deg,rgba(44,74,126,.66),rgba(24,48,86,.55));backdrop-filter:blur(10px) saturate(1.5);-webkit-backdrop-filter:blur(10px) saturate(1.5);'
       + 'border:1px solid rgba(150,255,190,.60);'
       + 'box-shadow:0 0 16px rgba(120,255,165,.58),0 0 40px rgba(50,230,95,.28),inset 0 0 14px rgba(140,255,180,.22);'
     w.innerHTML='<div class="ocShine" style="background:linear-gradient(90deg,transparent,rgba(188,247,203,.28),transparent)"></div>'
@@ -4350,7 +4385,7 @@ renderClock();
       + '<span class="ocMVT" style="position:absolute;top:0;left:0;height:100%;display:inline-flex;align-items:center;'
       + 'font-size:15px;white-space:nowrap;color:#dcfbe4;font:12px/1 sans-serif;text-shadow:0 0 6px rgba(108,237,140,.55);will-change:transform"></span>'
       + '</div>';
-    wrap.insertBefore(w, wrap.firstChild);
+    document.body.appendChild(w);   /* v4.6.6 上条挂到 body：.wrap 现在带主题色相滤镜，条体嵌在里面就永远是棕黄 */
     topEl=w;
     return w;
   }
@@ -4405,6 +4440,8 @@ function _segMaxW(){ var b=document.getElementById('ocIdle'); var w=b&&b.clientW
       return '<span class="'+cls+'" title="'+tip+'"><i class="d"></i>'+x.node+' 离线 '+t+'</span>';
     }).join('');
   }
+  /* v4.6.0 调试钩子：只改内存变量并重绘，不发任何告警，供截图验收用 */
+  window.__segPrev=function(t,k,p){ window.__SEGTXT=t||''; window.__SEGKIND=k||''; window.__SEGPCT=(typeof p==='number')?p:null; try{ segBadge(); }catch(e){} };
   function segCompose(){
     var na=(window.__NODEALERTS||[]).filter(function(x){ return x.actionable !== false; }), act=window.__ACTSEG||'', actKind=window.__SEGKIND||'';
     var txt='', kind='';
@@ -4434,27 +4471,125 @@ function _segMaxW(){ var b=document.getElementById('ocIdle'); var w=b&&b.clientW
     window.__SEGTXT=txt; window.__SEGKIND=txt?kind:'';
     segBadge();
   }
-  function segBadge(){
-    /* v4.5.15 按主公令：不再单独浮出徽标，状态整行写在信息条里，仍随状态变色 */
+    function _segSym(key){ return key==='alert'?'\u25B2':(key==='bak'?'\u25C6':'\u25CF'); }
+  function _segDur(ms){ var s=Math.max(0,Math.floor(ms/1000)), m=Math.floor(s/60), hh=Math.floor(m/60);
+    if(hh) return hh+' 小时 '+(m%60)+' 分'; if(m) return m+' 分 '+(s%60)+' 秒'; return s+' 秒'; }
+  function _segLineStr(){ var B=window.__SEGBASE; if(!B) return '';
+    var t=B.txt;
+    if(B.pct!=null && /bak|backup|mirror|restart|upgrade|reboot/i.test(B.kind||'') && !/\d+\s*%/.test(t)) t+='  '+Math.round(B.pct)+'%';
+    var line=_segSym(B.key)+'  '+t;
+    try{ if(location&&location.host) line+='   ·   目标 '+location.host; }catch(e){}
+    if(B.key!=='act' && window.__SEGSTART) line+='   ·   已 '+_segDur(Date.now()-window.__SEGSTART);
+    var _nw=new Date(); line+='   ·   现在 '+('0'+_nw.getHours()).slice(-2)+':'+('0'+_nw.getMinutes()).slice(-2)+':'+('0'+_nw.getSeconds()).slice(-2);
+    return line; }
+  function _segPaintOne(b, line){
+    var mv=b.querySelector('.ocMV, .ocMVT'); if(!mv) return;
+    if(mv.textContent!==line) mv.textContent=line;
+    mv.style.animation='none'; mv.style.transform='translateX(0)';   /* 状态态绝不滚动 */
+    mv.style.left='0'; mv.style.right='0'; mv.style.justifyContent='center'; mv.style.overflow='hidden';   /* v4.6.10 默认态也居中，否则文字贴左边、右侧被父级裁掉 */
+    var host=mv.parentNode, maxW=(host&&host.clientWidth?host.clientWidth:(b.clientWidth||window.innerWidth-48))-10;
+    var fs=16; mv.style.fontSize=fs+'px';   /* v4.6.2 主公要「醒目」，字号上限提到 16px（条高 26px 可容） */
+    /* v4.6.11 清技术债：原来这里用 mv.scrollWidth>mv.clientWidth 判溢出——mv 是 left/right:0 的满宽
+       flex 容器，两边恒等，条件永远假、纯空转（本项目第三次踩同一个坑）。已删除，溢出判定统一交给
+       下面基于 Range 的真实文字宽，任何「容器 scrollWidth vs clientWidth」比较一律禁止。 */
+    var _tw=function(){ var r=document.createRange(); r.selectNodeContents(mv); return r.getBoundingClientRect().width; };
+    /* 2026-11-19 主公令「字太少、填满一点」：短文案按可用宽度自动放大（上限 17px，条高 26px 的极限），
+       长文案走缩字分支，两条互不干扰。 */
+    while(fs<17 && _tw() < maxW*0.62){ fs+=0.5; mv.style.fontSize=fs+'px'; }
+    while(_tw() > maxW && fs>12){ fs-=0.5; mv.style.fontSize=fs+'px'; }
+  }
+  function _segTrim(b){ try{ var mv=b&&b.querySelector('.ocMV, .ocMVT'); if(!mv) return;
+    var host=mv.parentNode, limit=(host&&host.clientWidth?host.clientWidth:(b.clientWidth||window.innerWidth-48))-24;
+    var tw=function(){ var r=document.createRange(); r.selectNodeContents(mv); return r.getBoundingClientRect().width; };
+    var g=0;
+    while(tw() > limit && g++<10){ var k=mv.textContent.lastIndexOf(' · '); if(k<6) break; mv.textContent=mv.textContent.slice(0,k); }
+  }catch(e){} }
+function _segPaint(){ var line=_segLineStr(); if(!line) return;
+    ['ocTop','ocIdle'].forEach(function(id){ var b=document.getElementById(id); if(b) _segPaintOne(b, line); }); }
+
+function segBadge(){
+    /* v4.6.2 按主公令：状态不跑马灯，整条变色 + 居中 + 符号 + 进度条 + 已持续时长（每秒刷新） */
     var txt=window.__SEGTXT||'';
+    var k=window.__SEGKIND||'act';
+    var key=(k==='alert')?'alert':(/restart|upgrade|reboot|bak|backup|mirror/i.test(k)?'bak':'act');
+    var pct=(typeof window.__SEGPCT==='number')?window.__SEGPCT:null;
+    var ST={
+      alert:{bg:'#ff0000',bd:'#ff5a5a',sh:'0 0 18px rgba(255,0,0,.85)',c:'#ffffff',bar:'rgba(255,255,255,.50)',ts:'0 1px 1px rgba(0,0,0,.80)'},        /* v4.6.6 鲜红：纯红 #ff0000（旧 #d90000 经双层色相滤镜后发暗酒红） */
+      bak:{bg:'#ffd400',bd:'#ffc400',sh:'0 0 18px rgba(255,212,0,.88)',c:'#1a1000',bar:'rgba(92,62,0,.45)',ts:'0 1px 1px rgba(255,255,255,.35)'},        /* v4.6.6 小黄鸭黄 #ffd400，描边同色系不再发白 */
+      act:{bg:'#8cff2e',bd:'#9dff4d',sh:'0 0 22px rgba(140,255,46,.92)',c:'#06240a',bar:'rgba(20,60,0,.45)',ts:'0 1px 1px rgba(0,0,0,.55)'}       /* v4.6.6 萤火虫绿：高亮黄绿，深字保证对比 */
+    };
+    /* v4.6.7 信息条已移出主题滤镜（#ocTop/#ocIdle 上 filter:none），不再需要反滤镜；
+       旧写法靠 !important 压住内联 INV，一旦优先级变动红会偏紫、黄会偏绿，已彻底删除。 */
+    if(txt){
+      /* 文案里若已带「已 22 分」，抽出来当作计时起点，避免从 0 重新数、也不重复显示 */
+      var _off=0;
+      var _mm=/已\s*(\d+)\s*分(?:\s*(\d+)\s*秒)?/.exec(txt) || /已\s*(\d+)\s*秒/.exec(txt);
+      if(_mm){
+        if(_mm[0].indexOf('分')>=0) _off=(+_mm[1])*60+(+(_mm[2]||0)); else _off=+(_mm[1]||0);
+        txt=txt.replace(_mm[0],'').replace(/\s*·\s*$/,'').replace(/\s{2,}/g,' ').trim();
+      }
+      var sig=txt.replace(/\d+\s*%/g,'')+'|'+k;   /* 百分比变化不算新事件，否则计时每秒被清零 */
+      if(window.__SEGSIG!==sig){ window.__SEGSIG=sig; window.__SEGSTART=Date.now()-_off*1000; }
+      window.__SEGBASE={txt:txt,key:key,kind:k,pct:pct};
+      if(!window.__SEGTICK) window.__SEGTICK=setInterval(function(){ try{ _segPaint(); }catch(e){} },1000);
+    } else {
+      window.__SEGBASE=null; window.__SEGSIG=''; window.__SEGSTART=0;
+      if(window.__SEGTICK){ clearInterval(window.__SEGTICK); window.__SEGTICK=0; }
+    }
     ['ocTop','ocIdle'].forEach(function(id){
       var b=document.getElementById(id); if(!b) return;
       var el=b.querySelector('.ocSEG'); if(el) el.remove();
       var box=b.querySelector('.ocBox')||b;
-      var wasSt=box.classList.contains('st-bak')||box.classList.contains('st-alert')||box.classList.contains('st-act');
-      box.classList.remove('st-bak','st-alert','st-act');
-      var mv=b.querySelector('.ocMV, .ocMVT');
-      if(!txt){ if(mv){ mv.style.animation=''; } if(wasSt && !window.__stClearing){ window.__stClearing=1; setTimeout(function(){ window.__stClearing=0; try{ renderIdle({}); }catch(e){} },100); } return; }  /* 状态结束：恢复跑马灯 */
-      var k=window.__SEGKIND||'act';
-      box.classList.add((k==='alert')?'st-alert':(/bak|backup|mirror/i.test(k))?'st-bak':'st-act');
-      if(mv){
-        var line=txt;
-        if(typeof window.__SEGPCT==='number' && /bak|backup|mirror/i.test(k)) line+='  '+Math.round(window.__SEGPCT)+'%';
-        if(mv.textContent!==line) mv.textContent=line;
-        mv.style.animation='none'; mv.style.transform='translateX(0)';
+      var mvs=b.querySelectorAll('.ocMV, .ocMVT');
+      for(var _j=1;_j<mvs.length;_j++){ mvs[_j].textContent=''; }
+      var mv=mvs[0];
+      var pb=box.querySelector('.ocPbar');
+
+      if(!txt){   /* 状态结束：还原原样式并恢复滚动 */
+        if(box._st0){
+          box.style.background=box._st0.bg; box.style.borderColor=box._st0.bd; box.style.boxShadow=box._st0.sh;
+          box.style.filter=box._st0.ft||'';
+          box.style.animation=box._st0.an||'';
+          if(mv && box._st0.mv){ var o0=box._st0.mv; mv.style.left=o0.l; mv.style.right=o0.r; mv.style.justifyContent=o0.j; mv.style.fontSize=o0.f; mv.style.fontWeight=o0.w; mv.style.color=o0.c; mv.style.textShadow=o0.t; }
+          if(mv){ mv.style.animation=''; mv.style.transform='translateX(0)'; }
+          if(pb) pb.remove();
+          var shn0=box.querySelector('.ocShine'); if(shn0) shn0.style.display='';
+          box._st0=null;
+          if(!window.__stClearing){ window.__stClearing=1; setTimeout(function(){ window.__stClearing=0; try{ renderIdle({}); }catch(e){} },100); }
+        }
+        return;
       }
+
+      var S=ST[key];
+      if(!box._st0){
+        box._st0={ bg:box.style.background, bd:box.style.borderColor, sh:box.style.boxShadow, ft:box.style.filter, an:box.style.animation,
+          mv: mv?{ l:mv.style.left, r:mv.style.right, j:mv.style.justifyContent, f:mv.style.fontSize, w:mv.style.fontWeight, c:mv.style.color, t:mv.style.textShadow }:null };
+      }
+      if(S.bg){ box.style.background=S.bg; box.style.borderColor=S.bd; box.style.boxShadow=S.sh; box.style.filter='none'; box.style.animation='none'; }   /* 停掉 ocGlow，否则绿光压过状态色 */
+      else { box.style.background=box._st0.bg; box.style.borderColor=box._st0.bd; box.style.boxShadow=box._st0.sh; box.style.filter=box._st0.ft||''; }
+
+      var shn=box.querySelector('.ocShine'); if(shn) shn.style.display='none';   /* 状态态停掉扫光，避免像走马灯 */
+      if(mv){
+        mv.style.animation='none'; mv.style.transform='translateX(0)';
+        mv.style.left='0'; mv.style.right='0'; mv.style.justifyContent='center';
+        mv.style.fontWeight='700'; mv.style.color=S.c;
+        mv.style.textShadow=S.ts||('0 0 10px '+S.bar);   /* v4.6.7 红底白字发糊：给每档单独写阴影，红/绿用暗色描边提清晰度 */
+        mv.textContent='';
+        _segPaintOne(b, _segLineStr());
+      }
+      var trk=box.querySelector('.ocPtrack');
+      if(pct!=null && key!=='act'){
+        if(!pb || pb.parentNode!==box){ pb=box.querySelector('.ocPbar'); if(!pb){ pb=document.createElement('div'); pb.className='ocPbar'; box.appendChild(pb); } }
+        if(!trk){ trk=document.createElement('div'); trk.className='ocPtrack'; box.appendChild(trk); }   /* v4.6.8 全宽轨道：只有一小段填充时不再像「一条来路不明的横线」 */
+        trk.style.cssText='position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.28);pointer-events:none;border-radius:0 0 6px 6px';   /* v4.6.8 随条体 6px 圆角，避免底部两角被裁成弧 */
+        pb.style.cssText='position:absolute;left:0;bottom:0;height:3px;border-radius:0 2px 2px 0;transition:width .5s ease,background .3s ease;opacity:1;z-index:1';
+        pb.style.width=Math.max(0,Math.min(100,pct))+'%';
+        pb.style.background=S.bar;
+      } else { if(pb) pb.remove(); if(trk) trk.remove(); }
     });
   }
+
+
 
   /* 调试钩子：window.__segTest('全量备份 42%') / __segTest('') */
   window.__segTest=function(t){ window.__SEGTXT=t||''; segBadge(); };
@@ -4503,12 +4638,12 @@ function _segMaxW(){ var b=document.getElementById('ocIdle'); var w=b&&b.clientW
     var txt=buildTickerText(d||{});
     var mv=idleEl.querySelector('.ocMV');
     var t=mkTop();
-    if(t) fillMarquee(t, t.querySelector('.ocMVT'), buildTopText(d||{}), 42);
-    var boxW=(idleEl.querySelector('.ocBox')||{}).clientWidth||(window.innerWidth-48);
-    var one=txt, guard=0;
-    mv.textContent=one;
-    while (mv.scrollWidth < boxW + 80 && guard++ < 8) { one = one + '   ·   ' + one; mv.textContent = one; }
-    mv.textContent = one + '   ·   ' + one;
+    /* v4.6.4 主公令 20:41：信息条一律静止居中，不再横向跑动。
+       旧根因：这一行每轮 ticker 刷新都会把跑马灯动画重新挂回 mv（animation=ocMarquee），
+       于是刚被 segCompose 摆正的静态文字又被拽走、下一轮再拉回来——看到的就是「往左跑、又拉过去」。*/
+    if(t) _segPaintOne(t, buildTopText(d||{}));
+    _segPaintOne(idleEl, txt);
+    _segTrim(t); _segTrim(idleEl);   /* 太长就按段裁，宁缺不裁半个字 */
     var m=document.querySelector('.main');
     var left=24,width=window.innerWidth-48;
     if(m){var r=m.getBoundingClientRect(); if(r.width>200){left=Math.round(r.left);width=Math.round(r.width);}}
@@ -4519,13 +4654,6 @@ function _segMaxW(){ var b=document.getElementById('ocIdle'); var w=b&&b.clientW
     window.__NODETRUNC = !!(d&&d.nodeAlertsTruncated);
     renderNodeList(window.__NODEALERTS);
     segCompose();
-    requestAnimationFrame(function(){
-      var half=mv.scrollWidth/2;
-      var dur=Math.max(24, Math.round(half/55));
-      mv.style.animation='none'; mv.style.transform='translateX(0)';
-      void mv.offsetWidth;
-      mv.style.animation='ocMarquee '+dur+'s linear infinite';
-    });
   }
 
   function place(wrap){

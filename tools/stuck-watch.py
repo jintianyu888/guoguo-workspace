@@ -30,7 +30,9 @@ def tasks_overdue():
         dp = (r['due_plan'] or '').strip()
         if not dp: continue
         try:
-            t = datetime.datetime.strptime(dp[:16], '%Y-%m-%d %H:%M')
+            # 2026-11-19 修：due_plan 常写成 ISO 格式（2026-11-19T09:30:00+08:00），
+            # 原写法 dp[:16] 落在 'T' 上解析失败，回落成「当天 23:00」→ 真过期也不报警。
+            t = datetime.datetime.strptime(dp[:16].replace('T', ' '), '%Y-%m-%d %H:%M')
         except Exception:
             try: t = datetime.datetime.strptime(dp[:10], '%Y-%m-%d') + datetime.timedelta(hours=23)
             except Exception: continue

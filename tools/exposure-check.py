@@ -12,7 +12,7 @@ import json, os, subprocess, sys, time
 
 WS = '/home/j/.openclaw/workspace'
 STATE = os.path.join(WS, 'state', 'work', 'exposure.json')
-PORTS = ('18789', '9443')
+PORTS = ('18789', '9443', '8899', '18888', '18899', '7891')  # 2026-11-19 补：面板/文件站/短信回调/代理为计划内
 NETSH = '/mnt/c/Windows/System32/netsh.exe'
 
 def run(args):
@@ -107,9 +107,9 @@ def main():
     if extra:
         problems.append('出现计划外 portproxy：' + '；'.join(extra))
     json.dump(cur, open(STATE, 'w'), ensure_ascii=False, indent=1)
+    cur['problems'] = problems
     if problems and problems != prev.get('problems'):
         subprocess.run(['bash', os.path.join(WS, 'tools', 'notify.sh'), '暴露面变化：' + ' / '.join(problems)], timeout=60)
-        cur['problems'] = problems
         json.dump(cur, open(STATE, 'w'), ensure_ascii=False, indent=1)
         print('EXPOSURE_WARN ' + ' / '.join(problems))
         return 1

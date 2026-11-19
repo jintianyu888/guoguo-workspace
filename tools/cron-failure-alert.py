@@ -270,7 +270,7 @@ def main():
         if dry:
             print(msg)
         elif notify(msg):
-            save_state({"fp": fp, "at": time.time()})
+            save_state({"fp": "fetch_failed", "at": time.time()})
             log("已推送 fetch_failed 告警")
         else:
             log("fetch_failed 告警推送失败，下轮重试")
@@ -298,22 +298,56 @@ def main():
     lines.append("（同一批异常 6 小时内不重复推送；情况变化会立即重报）")
     text = "\n".join(lines)
 
-    fp = "\n".join(fingerprint(issues))
+    # v2 2026-11-19：逐条去重。原来整批算一个指纹，只要异常集合变一下（任务在 ok/error 之间跳）
+    # 整批重推，一天能推七八次同样的三条。现在按「类型+任务ID+失败档位」逐条记 6h，只推新增项。
     st = load_state()
-    same = st.get("fp") == fp and (time.time() - _as_float(st.get("at"))) < COOLDOWN
+    seen = st.get("seen") or {}
+    # 已认领故障：明确知道原因、在等修复窗口的，不再即时推；只在夜间汇总里留一行
+    ack = {}
+    ackp = os.path.join(W, "state/work/fault-ack.json")
+    if os.path.exists(ackp):
+        try:
+            ack = json.load(open(ackp)) or {}
+        except Exception:
+            ack = {}
+    now_ts = time.time()
+    fresh = []
+    for it in issues:
+        k = str(it[0]); i = str(it[1])
+        n = _as_int(it[4]) if len(it) >= 5 else 0
+        f = "%s|%s|%d" % (k, i, n if k == "error" else 0)
+        a = ack.get(str(it[1])) or ack.get(str(it[2]))
+        if a and _as_float(a.get("until")) > now_ts:
+            log("已认领，不即时推: %s（%s）" % (it[2], a.get("note", "")))
+            continue
+        if now_ts - _as_float(seen.get(f)) >= COOLDOWN:
+            fresh.append((f, it))
+    if not fresh:
+        log("告警抑制（%d 项全部在 6h 窗口内已推）" % len(issues))
+        return 0
+    stale_n = len(issues) - len(fresh)
+    issues = [it for _, it in fresh]
+    lines = ["⚠️ OpenClaw 定时任务异常（%s）" % time.strftime("%m-%d %H:%M")]
+    icon = {"error": "🔴", "overdue": "🟠", "disabled": "🟡"}
+    for k, i, n, d, c in sorted(issues, key=lambda x: (x[0] != "error", x[0] != "overdue")):
+        lines.append("%s %s：%s" % (icon.get(k, "•"), n, d))
+    if stale_n:
+        lines.append("（另有 %d 项仍在持续，6h 内已报过，不再重复）" % stale_n)
+    lines.append("（同一项 6 小时内不重复推送；恢复后再次失败会立即重报）")
+    text = "\n".join(lines)
 
     if dry:
         print(text)
-        print("\n[dry-run] fingerprint=%s same=%s" % (hashlib.sha256(fp.encode("utf-8")).hexdigest()[:8], same))
-        return 0
-
-    if same:
-        log("告警抑制（同批已推）: %d 项" % len(issues))
+        print("\n[dry-run] 新增 %d 项 / 抑制 %d 项" % (len(issues), stale_n))
         return 0
 
     ok = notify(text)
     if ok:
-        save_state({"fp": fp, "at": time.time()})
+        for f, _ in fresh:
+            seen[f] = now_ts
+        cut = now_ts - 7 * 86400
+        seen = {k2: v for k2, v in seen.items() if _as_float(v) >= cut}
+        save_state({"seen": seen})
         log("已推送 %d 项异常" % len(issues))
     else:
         log("推送失败，下轮重试（%d 项异常）" % len(issues))

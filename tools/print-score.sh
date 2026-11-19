@@ -6,7 +6,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "$#" -lt 1 ]; then echo "usage: bash print-score.sh <file> [--dpi N] [--paper a4] [--no-fill] [--dry]"; exit 2; fi
 SRC="$1"; shift
-PAPER=a4; DPI=600; EXTRA=""; DRY=""
+PAPER=a4; DPI=400; EXTRA=""; DRY=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --paper) PAPER="$2"; shift 2;;

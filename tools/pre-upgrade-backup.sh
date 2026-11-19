@@ -6,10 +6,19 @@ LOG=/home/j/.openclaw/workspace/state/work/pre-upgrade-backup.log
 OUT=/mnt/e/openclaw-backups   # 2026-11-02 主公令：D 盘不再放备份（升级前备份落 E）
 echo "[$(date '+%F %T')] 升级前备份开始：$WHY" >> "$LOG"
 sh /home/j/.openclaw/workspace/tools/gen-recovery-doc.sh >> "$LOG" 2>&1
-openclaw backup create --output "$OUT" --verify >> "$LOG" 2>&1
+# 2026-11-19 修复：systemd-run 非登录环境 PATH 里没有 openclaw（rc=127），必须解析绝对路径
+CLI=""
+if command -v openclaw >/dev/null 2>&1; then CLI="openclaw"
+elif [ -x /home/j/.npm-global/bin/openclaw ]; then CLI="/home/j/.npm-global/bin/openclaw"
+fi
+if [ -z "$CLI" ] && command -v node >/dev/null 2>&1 && [ -f /home/j/.npm-global/bin/openclaw ]; then CLI="node /home/j/.npm-global/bin/openclaw"; fi
+if [ -z "$CLI" ]; then echo "[$(date '+%F %T')] ❌ 找不到 openclaw CLI，备份未执行" >> "$LOG"; echo "❌ 找不到 openclaw CLI —— 禁止继续升级"; exit 1; fi
+BEFORE=$(ls -t "$OUT"/*.tar.gz 2>/dev/null | head -1)   # 2026-11-19 修复：失败时不得把旧归档当新归档报
+$CLI backup create --output "$OUT" --verify >> "$LOG" 2>&1
 RC=$?
 F=$(ls -t "$OUT"/*.tar.gz 2>/dev/null | head -1)
-echo "[$(date '+%F %T')] rc=$RC 最新归档: $(basename "$F" 2>/dev/null)" >> "$LOG"
+if [ -n "$F" ] && [ "$F" = "$BEFORE" ]; then F=""; fi   # 没有新归档 = 本次没产出
+echo "[$(date '+%F %T')] rc=$RC 本次新归档: ${F:-无（未产出新归档，禁止当作成功）}" >> "$LOG"
 if [ "$RC" = "0" ] && [ -n "$F" ]; then
   # 2026-10-23 双审修复：再建一条 hardlink 进 predanger 专用目录（同盘零成本）；2026-11-02 起主目录改 E，hardlink 仍在同盘成立
   PL=/mnt/e/openclaw-predanger/predanger-$(basename "$F")

@@ -20,6 +20,26 @@ add(){ ALERTS="${ALERTS}${ALERTS:+
 BAD_RC=0
 BAD=$(timeout 100 python3 "$W/tools/backup-failed-jobs.py" 2>/dev/null) || BAD_RC=$?
 BAD=$(printf '%s\n' "$BAD" | LC_ALL=C sed '/^$/d' | LC_ALL=C sort)
+# v2 2026-11-19：逐行过滤「已认领」的故障，避免与 cron-failure-alert 双通道重复报同一件事
+if [ -n "$BAD" ] && [ -x "$W/tools/fault-ack.py" ] || [ -f "$W/tools/fault-ack.py" ]; then
+  _keep=""
+  while IFS= read -r _ln; do
+    [ -z "$_ln" ] && continue
+    _nm="$(printf '%s' "$_ln" | sed 's/([^()]*)$//')"
+    _hit=0
+    python3 "$W/tools/fault-ack.py" check "$_ln" >/dev/null 2>&1 && _hit=1
+    [ "$_hit" = 0 ] && python3 "$W/tools/fault-ack.py" check "$_nm" >/dev/null 2>&1 && _hit=1
+    if [ "$_hit" = 1 ]; then
+      echo "[health-alert] 已认领，跳过：$_nm" >> "$W/state/alerts/digest.log" 2>/dev/null || true
+      continue
+    fi
+    _keep="$_keep$_ln
+"
+  done <<EOF
+$BAD
+EOF
+  BAD="$(printf '%b' "$_keep" | LC_ALL=C sed '/^$/d')"
+fi
 if [ -n "$BAD" ]; then
   LASTF="$ST/backup-bad.last"; LASTT="$ST/backup-bad.ts"
   LASTS=$(cat "$LASTF" 2>/dev/null); LASTTS=$(cat "$LASTT" 2>/dev/null || echo 0)
