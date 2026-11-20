@@ -29,11 +29,20 @@ def main():
         e=s.get('expr',''); t=parse(e)
         if t is None: continue
         items.append((t,j.get('name'),e)); 
+        pk=(j.get('payload') or {}).get('kind')
+        is_token = pk=='agentTurn'
+        HEAVY=('备份','镜像','校验','哈希','演练','清理','互备','快照','杀毒','解压')
+        is_heavy = (not is_token) and any(k in (j.get('name') or '') for k in HEAVY)
         for label in ['断网窗','重启红区','早高峰','午高峰']:
             for w in [x for group in WINDOWS for x in (group if isinstance(group,list) else [])]:
                 if isinstance(w,tuple) and w[0]==label:
                     _,lo,hi=w
-                    if lo<=t<=hi: viol.append((label,'%02d:%02d'%(t//60,t%60),j.get('name'),e))
+                    if lo<=t<=hi:
+                        # 2026-11-20 主公令：09-12 是重 IO 专用窗，零 token 脚本放行
+                        if label=='早高峰' and not is_token: continue
+                        # 14-18 是打印/乐谱专用窗：token 与重 IO 都禁，毫秒级监控放行
+                        if label=='午高峰' and not is_token and not is_heavy: continue
+                        viol.append((label,'%02d:%02d'%(t//60,t%60),j.get('name'),e))
     print('定时任务总数:',len(items))
     if viol:
         print('\n【撞窗】',len(viol),'项')

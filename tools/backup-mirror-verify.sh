@@ -15,6 +15,19 @@ for pair in "d e" "e h"; do
   set -- $pair; SRC=/mnt/$1/openclaw-backups/; DST=/mnt/$2/openclaw-backups/
   [ -d "$SRC" ] || { echo "  跳过 $1->$2（源不存在）" >> "$LOG"; continue; }
   mkdir -p "$DST"
+  if [ "$1" = "e" ] && [ "$2" = "h" ]; then
+    # 2026-11-20 查实：e→h 体量 100G+，内联跑必被 cron 45 分钟超时掐死，H 盘从 11-17 起停更。
+    # 改为交给 systemd 独立单元在后台跑，cron 只负责发起，不占 job 超时。
+    if systemd-run --user --unit="mirror-e2h-$(date +%Y%m%d-%H%M)" \
+        --description="E→H 备份镜像" \
+        nice -n 10 ionice -c2 -n7 rsync -a --partial "$SRC" "$DST" >/dev/null 2>&1; then
+      echo "  e -> h : 已交由 systemd 单元后台执行（cron 不内联，避免超时）" >> "$LOG"
+    else
+      echo "  e -> h : ❌ 后台单元启动失败" >> "$LOG"
+      bash "$W/tools/notify.sh" "【备份镜像】e→h 后台单元启动失败，请检查 systemd-run。" >/dev/null 2>&1 || true
+    fi
+    continue
+  fi
   rsync -a "$SRC" "$DST" >> "$LOG" 2>&1
   # 校验：周日强制全量 checksum，平日 size-only 快比对；单次上限 90 分钟，超时中止并告警
   if [ "$(date +%u)" = "7" ]; then MODE=checksum; CAP=21600; else MODE=size-only; CAP=5400; fi

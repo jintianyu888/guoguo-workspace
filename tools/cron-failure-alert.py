@@ -30,6 +30,8 @@ LOG = os.path.join(W, "state/cron-alert.log")
 NOTIFY = os.path.join(W, "tools/notify.sh")
 COOLDOWN = int(os.environ.get("CFA_COOLDOWN", "21600"))      # 同批告警抑制窗口 6h
 OVERDUE = int(os.environ.get("CFA_OVERDUE_SEC", "900"))      # 超期未跑阈值 15min
+STALE_ERR_HOURS = float(os.environ.get("CFA_STALE_ERR_HOURS", "24"))   # 陈旧错误免报阈值（2026-11-20）
+RECOVER_HOURS = float(os.environ.get("CFA_RECOVER_HOURS", "24"))       # 恢复通知回看窗口（2026-11-20）
 CRITICAL_KEYS = ("备份", "归档", "哈希", "backup")
 
 
@@ -143,8 +145,18 @@ def collect(jobs, now_ms):
         if restart_only:
             pass
         elif n >= 1 or status == "error":
-            detail = err_detail or ("lastRunStatus=%s" % (status or "error"))
-            out.append(("error", jid, name, "连续失败 %d 次｜%s" % (n, detail), n))
+            # 2026-11-20（干活管家 14:00 误红事件）：陈旧错误会把面板压红好几天。
+            # 判据：连续失败 0（之后没再失败）+ 最后运行早于 CFA_STALE_ERR_HOURS（默认 24h）
+            #  -> 按陈旧处理，不推送；该任务恢复运行后再失败会立即重报。
+            _age_h = 0.0
+            _lr = st.get("lastRunAtMs")
+            if isinstance(_lr, (int, float)) and _lr > 0:
+                _age_h = (now_ms - _lr) / 3600000.0
+            if n <= 0 and _age_h > STALE_ERR_HOURS:
+                pass
+            else:
+                detail = err_detail or ("lastRunStatus=%s" % (status or "error"))
+                out.append(("error", jid, name, "连续失败 %d 次｜%s" % (n, detail), n))
         elif is_fresh_delivery_fail(st, now_ms):
             out.append(("delivery", jid, name, "投递失败｜%s" % (err_detail or str(st.get("lastDeliveryStatus"))), 0))
 
@@ -288,6 +300,21 @@ def main():
         return 0
 
     if not issues:
+        # 2026-11-20：恢复要说话。此前报过的异常现在全没了 -> 推一条「已解除」，
+        # 否则面板的告警是状态流，红条会一直挂着直到有人手动清。
+        try:
+            _st0 = load_state()
+            _seen0 = _st0.get("seen") or {}
+            _now0 = time.time()
+            _recent = {k2: v for k2, v in _seen0.items() if _as_float(v) >= _now0 - RECOVER_HOURS * 3600}
+            if _recent:
+                _rl = ("✅ OpenClaw 定时任务异常已解除（%s）\n本轮巡检 %d 个任务全部正常；此前报过的 %d 项已不再出现。\n—— 出处：python3·自动｜归属：未标注"
+                       % (time.strftime("%m-%d %H:%M"), len(jobs), len(_recent)))
+                if notify(_rl):
+                    save_state({"seen": {}})
+                    log("已推送恢复：%d 项" % len(_recent))
+        except Exception as _e:
+            log("恢复通知异常: %r" % (_e,))
         log("巡检正常：%d 个任务无异常" % len(jobs))
         return 0
 
@@ -323,6 +350,18 @@ def main():
         if now_ts - _as_float(seen.get(f)) >= COOLDOWN:
             fresh.append((f, it))
     if not fresh:
+        # 2026-11-20：没有新东西可报 = 告警已收敛。此前 24h 内推过异常、现在全是
+        # 「已认领」或 6h 内重复的，就该发一条解除，否则面板红条永远挂着。
+        _now_ts = time.time()
+        _recent = {k2: v for k2, v in seen.items() if _as_float(v) >= _now_ts - RECOVER_HOURS * 3600}
+        _still = ", ".join(sorted({str(it[2]) for it in issues})) if issues else ""
+        if _recent:
+            _rl = ("✅ OpenClaw 定时任务告警已解除（%s）\n本轮 %d 个任务无新增故障；此前推过的 %d 条告警均已认领或已过冷却期%s。"
+                   % (time.strftime("%m-%d %H:%M"), len(jobs), len(_recent), ("（仍在跟进：" + _still + "）") if _still else ""))
+            if notify(_rl):
+                save_state({"seen": {}})
+                log("已推送解除：%d 项（原报 %d 项，已认领 %d 项）" % (len(_recent), len(issues), len(issues)))
+                return 0
         log("告警抑制（%d 项全部在 6h 窗口内已推）" % len(issues))
         return 0
     stale_n = len(issues) - len(fresh)

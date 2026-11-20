@@ -1,7 +1,11 @@
 #!/bin/bash
 # 备份状态快报：空间/时间/截至时间/异地/家底/结论
 set -uo pipefail
-ARCH=$(ls -dt /mnt/d/openclaw-backups /mnt/e/openclaw-backups /mnt/h/openclaw-backups /home/j/Backups 2>/dev/null | head -1); REPO=/home/j/openclaw-backup-repo; NAS=nas
+# v2.1.191 修（2026-11-20）：原先按目录 mtime 选盘，H 盘挂在 11-17 却因目录被 touch 过而被选中，
+# 导致「最新归档」显示成 3 天前并误报需检查。改为在所有盘里按文件 mtime 取最新的一份。
+_NEW=$(ls -t /mnt/d/openclaw-backups/*.tar.gz /mnt/e/openclaw-backups/*.tar.gz /mnt/h/openclaw-backups/*.tar.gz /mnt/x/openclaw-backups/*.tar.gz /home/j/Backups/*.tar.gz 2>/dev/null | head -1)
+ARCH=$(dirname "${_NEW:-/mnt/d/openclaw-backups}")
+REPO=/home/j/openclaw-backup-repo; NAS=nas
 SSH='ssh -o BatchMode=yes -o ConnectTimeout=15'
 F='WARNING|post-quantum|vulnerable|upgraded|openssh.com'
 now=$(date '+%Y-%m-%d %H:%M')

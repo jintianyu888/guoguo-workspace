@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # completion-notify.sh —— 每完成一项立刻报「已完成什么 + 下一步做什么」
 # 用法: completion-notify.sh --no 123 --did "做了什么(证据)" --next "下一步" [--by main] [--quiet]
 set -uo pipefail

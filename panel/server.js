@@ -2660,9 +2660,67 @@ function upgradeBlockers(){
     if (onQ !== null) {
       PRESENCE = { on: onQ !== '0', at: Date.now(), src: String(url.searchParams.get('src') || ''), ttl: Math.max(5, Number(url.searchParams.get('ttl') || 120)) * 1000 };
     }
+    /* v4.6.31 视口自报落盘：页面心跳带 vw/vh/dpr，这里记最新一条到 state/presence.json。
+       目的：拿到主公实机真实视口与缩放（innerWidth/innerHeight/devicePixelRatio），别再靠问他。
+       只取数不参与任何决策；写盘失败不影响心跳返回。 */
+    {
+      const vwQ = Number(url.searchParams.get('vw') || 0);
+      const vhQ = Number(url.searchParams.get('vh') || 0);
+      const dprQ = Number(url.searchParams.get('dpr') || 0);
+      const __ua = String(req.headers['user-agent'] || '');
+      if (vwQ > 0 && vhQ > 0 && __ua.indexOf('HeadlessChrome') < 0) {   /* 无头探针不许污染主公真实视口数据 */
+        try {
+          const nowMs = Date.now();
+          if (!global.__VP || vwQ !== global.__VP.vw || vhQ !== global.__VP.vh || dprQ !== global.__VP.dpr) {
+            global.__VP = { vw: vwQ, vh: vhQ, dpr: dprQ || 1, at: nowMs, src: String(url.searchParams.get('src') || ''), ua: String(req.headers['user-agent'] || '').slice(0, 200) };
+            const dir = path.join(__dirname, 'state');
+            try { fs.mkdirSync(dir, { recursive: true }); } catch (e2) {}
+            fs.writeFileSync(path.join(dir, 'presence.json'), JSON.stringify({ vw: global.__VP.vw, vh: global.__VP.vh, dpr: global.__VP.dpr, at: global.__VP.at, atHuman: new Date(global.__VP.at).toLocaleString('zh-CN', { hour12: false }), src: global.__VP.src, ua: global.__VP.ua, version: (() => { try { return fs.readFileSync(path.join(__dirname, 'VERSION'), 'utf8').trim(); } catch (e3) { return ''; } })() }, null, 2) + '\n');
+          }
+        } catch (e) {}
+      }
+    }
     const alive = !!(PRESENCE.at && (Date.now() - PRESENCE.at < (PRESENCE.ttl || 120000)));
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     return res.end(JSON.stringify({ on: alive ? PRESENCE.on : true, known: alive, ts: PRESENCE.at, src: PRESENCE.src }));
+  }
+  /* v4.6.32 系统级空闲时间：页面自己的键鼠事件只在页面有焦点时才有，
+     主公在别的程序里干活时页面 idle 照样涨到 30 分钟 → 误黑屏/误变暗。
+    用 Windows GetLastInputInfo 取「距上次系统输入多少秒」作为权威判据。
+    缓存 10 秒，execFile 超时 3 秒，取不到就 ok:false（页面自动退回页面 idle）。 */
+  if (url.pathname === '/api/osidle') {
+    const nowMs = Date.now();
+    if (global.__OSIDLE && (nowMs - global.__OSIDLE.at) < 10000) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(JSON.stringify(Object.assign({}, global.__OSIDLE, { cached: true })));
+    }
+    const PWSH = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
+    const psScript = [
+      "$ErrorActionPreference='Stop'",
+      "Add-Type -Namespace W -Name I -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii); [DllImport(\"kernel32.dll\")] public static extern ulong GetTickCount64(); public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }'",
+      "$li = New-Object W.I+LASTINPUTINFO",
+      "$li.cbSize = [uint32][System.Runtime.InteropServices.Marshal]::SizeOf($li)",
+      "[void][W.I]::GetLastInputInfo([ref]$li)",
+      "$tick = [W.I]::GetTickCount64()",
+      "$idle = [math]::Floor(($tick - [uint64]$li.dwTime) / 1000)",
+      "Write-Output $idle"
+    ].join("\n");
+    const b64 = Buffer.from(psScript, 'utf16le').toString('base64');
+    let done = false;
+    const finish = (obj) => { if (done) return; done = true; global.__OSIDLE = obj;
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify(obj)); };
+    try {
+      execFile(PWSH, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', b64], { timeout: 3000, encoding: 'buffer' }, (err, stdout) => {
+        if (err) return finish({ ok: false, err: String(err.message || err).slice(0, 120), at: Date.now() });
+        const txt = Buffer.from(stdout || '').toString('latin1').replace(/\0/g, '').trim();
+        const sec = parseInt((txt.match(/\d+/) || [])[0], 10);
+        if (!isFinite(sec)) return finish({ ok: false, err: 'parse', raw: txt.slice(0, 40), at: Date.now() });
+        finish({ ok: true, idleSec: sec, at: Date.now() });
+      });
+    } catch (e) { finish({ ok: false, err: String(e.message || e).slice(0, 120), at: Date.now() }); }
+    setTimeout(() => finish({ ok: false, err: 'timeout', at: Date.now() }), 3200);
+    return;
   }
   if (url.pathname === '/health') { res.writeHead(200); return res.end('ok'); }
   let p = url.pathname === '/' ? '/index.html' : url.pathname;

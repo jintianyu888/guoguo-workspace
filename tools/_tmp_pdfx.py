@@ -3,8 +3,9 @@ import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw, ImageFont
 import pikepdf
 from pikepdf import Name, Dictionary
-SRC="/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-a5146b30-1830-4a87-b927-6cd385438cfc/input-19_Nov_单词填空---1fe4ac5b-d590-4bb7-83d5-855e96b18577.docx"
-OUT="/home/j/openclaw-workspaces/print/out/19_Nov_单词填空_打印版.pdf"
+SRC="/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-8a8fb08a-cecb-4042-bcd5-12a3a664989b/input-20_Nov_单词填空---ce22f3c7-b127-4339-8d62-8eb40a41d60f.docx"
+OUT="/home/j/openclaw-workspaces/print/out/20_Nov_单词填空_打印版.pdf"
+TITLE="20 Nov 单词填空"
 LAT="/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"; LATB="/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf"; CJK="/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
 W="{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 root=ET.fromstring(zipfile.ZipFile(SRC).read("word/document.xml"))
@@ -51,7 +52,7 @@ def draw(x,y,s,font,cjf):
     for ch in s:
         f=cjf if is_cjk(ch) else font
         d.text((x,y),ch,font=f,fill=(0,0,0));x+=f.getlength(ch)
-draw(M,M,"19 Nov 单词填空（%d 词）"%len(pairs),TF,TC)
+draw(M,M,TITLE+"（%d 词）"%len(pairs),TF,TC)
 y=M+120
 d.rectangle([M,y,M+TW,y+hdr_h],fill=(238,238,238))
 draw(M+14,y+PAD,"单词（原词 + 释义）",HB,HC)
@@ -64,7 +65,7 @@ for r in range(len(rows)):
     for k,ln in enumerate(rows[r][1]): draw(M+cw[0]+14,y+PAD+k*LH,ln,B,C)
     d.line([(M,y),(M+TW,y)],fill=(110,110,110),width=2); y+=h
 d.line([(M,y),(M+TW,y)],fill=(110,110,110),width=2)
-for x in (M, M+cw[0], M+TW): d.line([(x,top),(x,y)],fill=(110,110,110),width=2)
+for x in (M,M+cw[0],M+TW): d.line([(x,top),(x,y)],fill=(110,110,110),width=2)
 raw=zlib.compress(img.tobytes(),6)
 pdf=pikepdf.new(); p=pdf.add_blank_page(page_size=(595.28,841.89))
 st=pdf.make_stream(raw); st.Type=Name.XObject; st.Subtype=Name.Image
