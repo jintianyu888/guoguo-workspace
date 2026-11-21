@@ -119,12 +119,12 @@ purge_trash() {
   # 2026-10-21 加固：同时清目录与平铺 .tar.gz；入回收时间用 .entered-at/ctime（不是 mtime）；
   # 删除前必须确认别处有同名副本；null 分隔防换行文件名；rm -rf -- 防 - 开头
   d=$1; [ -d "$d" ] || return 0
-  find "$d" -maxdepth 1 -mindepth 1 \( -type d -o \( -type f -name '*.tar.gz' \) \) -mtime +7 -ctime +7 -print0 2>/dev/null |
+  find "$d" -maxdepth 1 -mindepth 1 \( -type d -o \( -type f -name '*.tar.gz' \) \) -mtime +3 -ctime +3 -print0 2>/dev/null |
   while IFS= read -r -d '' x; do
     t="$x/.entered-at"
     if [ -f "$t" ]; then age=$(( ( $(date +%s) - $(stat -c %Y "$t") ) / 86400 ))
     else age=$(( ( $(date +%s) - $(stat -c %Z "$x") ) / 86400 )); fi
-    [ "$age" -ge 7 ] || continue
+    [ "$age" -ge 3 ] || continue   # 2026-11-21：回收站 7 天→3 天（删前仍逐份校验别盘副本）
     b=$(basename "$x"); found=0
     for o in /mnt/d/openclaw-backups /mnt/e/openclaw-backups /mnt/h/openclaw-backups /home/j/Backups; do
       [ "$o" = "$(dirname "$d")" ] && continue
@@ -195,6 +195,7 @@ while IFS= read -r rf; do
   fi
 done < "$NL"
 
+purge_trash /mnt/x/openclaw-backups/_trash   # 2026-11-21 补：X 原来根本不在清理列表，_trash 攒到 477G
 purge_trash /mnt/d/openclaw-backups/_trash
 purge_trash /mnt/e/openclaw-backups/_trash
 purge_trash /mnt/h/openclaw-backups/_trash

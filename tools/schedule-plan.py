@@ -70,7 +70,7 @@ def report():
     print('== 落在红线/静默窗', len(red), '条')
     for name, mm, lab in red:
         print('  %02d:%02d  %s  [%s]' % (mm//60, mm%60, name, lab))
-    out = os.path.join(W, 'docs', '调度总表-%s.md' % datetime.datetime.now().strftime('%Y%m%d'))
+    out = os.path.join(W, 'docs', '调度总表-真源.md')
     lines = ['# 调度总表 ' + datetime.datetime.now().strftime('%F %H:%M'), '',
              '> 真源 state/ledger/schedule.db（tools/schedule-plan.py sync），耗时取 cron state.lastDurationMs', '',
              '## 实测耗时', '', '任务 | 分钟 | 超时(m) | 实测(m) | 状态 | expr']
@@ -83,7 +83,20 @@ def report():
     lines += ['', '## 红线/静默窗 %d 条' % len(red)]
     for name, mm, lab in red:
         lines.append('- %02d:%02d  %s  [%s]' % (mm//60, mm%60, name, lab))
-    open(out, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+    block = '\n'.join(lines) + '\n'
+    B = '<!-- AUTO:BEGIN 本段由 tools/schedule-plan.py 生成，勿手改 -->'
+    E = '<!-- AUTO:END -->'
+    try:
+        doc = open(out, encoding='utf-8').read()
+    except FileNotFoundError:
+        doc = '# 调度总表（唯一真源）\n\n' + B + '\n' + E + '\n'
+    if B in doc and E in doc:
+        pre, rest = doc.split(B, 1)
+        _, post = rest.split(E, 1)
+        doc = pre + B + '\n' + block + E + post
+    else:
+        doc = doc.rstrip() + '\n\n' + B + '\n' + block + E + '\n'
+    open(out, 'w', encoding='utf-8').write(doc)
     print()
     print('已写', out)
 

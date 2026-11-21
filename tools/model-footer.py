@@ -71,7 +71,11 @@ def bal_line(v, bal, quo):
     hand = age_note(_cap(qp, norm, bal))
 
     if v == 'deepseek':
-        av = qp.get('balance')
+        # 2026-11-21：优先 balances.json 的实时值（model-status 直采），quotas 只作兜底
+        av = norm.get('available')
+        if av is None:
+            av = qp.get('balance')
+        hand = age_note(bal.get('updated_at'))
         if av is None:
             av = norm.get('available')
         cur = '¥' if (qp.get('currency') or norm.get('unit')) == 'CNY' else ''

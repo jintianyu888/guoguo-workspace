@@ -7,7 +7,7 @@ import argparse, datetime as dt, importlib.util, json, os, re, subprocess, sys
 
 W = "/home/j/.openclaw/workspace"
 LOG = os.path.join(W, "state/work/cron-catchup.log")
-ALLOW = re.compile(r"简报|briefing|日报|report|体检|自审|汇总|审计|audit|扫描|summary|提醒|计划|盘点|巡检")
+ALLOW = re.compile(r"简报|briefing|日报|report|体检|自审|汇总|审计|audit|扫描|summary|提醒|计划|盘点|巡检|维护|提炼|双审|自查|检查")
 DENY = re.compile(r"备份|backup|镜像|mirror|推送|push|清理|clean|压缩|compact|升级|upgrade|重启|restart|删除|delete|演练|drill|归档|archive|下单|付款|发送|发布")
 
 def say(m):

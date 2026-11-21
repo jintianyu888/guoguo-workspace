@@ -2538,6 +2538,18 @@ function upgradeBlockers(){
     });
     return send(202, { ok: true, started: true, target: lt, msg: '已开始下载并安装 v' + lt + '（约 1-3 分钟）' });
   }
+  if (url.pathname === '/api/upgrade') {
+    try {
+      const p = '/home/j/.openclaw/workspace/state/work/upgrade-info.json';
+      const j = JSON.parse(require('fs').readFileSync(p, 'utf8'));
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, ...j }));
+    } catch (e) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: String(e && e.message || e) }));
+    }
+    return;
+  }
   if (url.pathname === '/api/balances/refresh') {
     const pv = url.searchParams.get('p');
     const st = pv ? startBalanceRefreshOne(pv) : startBalanceRefresh();

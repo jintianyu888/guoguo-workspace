@@ -3,6 +3,8 @@
 # 流程：预检 → 备份快照 → 安装 → 重启 → 硬验证 → 自检对齐 → 报告
 # 用法：bash tools/upgrade-openclaw.sh [--dry-run | --postcheck-only]
 set -u
+# 2026-11-21 修：systemd 环境里 PATH 不含 npm 全局 bin，导致 "openclaw --version" 读不到版本而中止
+export PATH=/home/j/.npm-global/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 WS=/home/j/.openclaw/workspace
 OH=/home/j/.openclaw
 PORT=18789
@@ -25,7 +27,9 @@ PIN="${PIN:-${OPENCLAW_TARGET:-}}"
 
 say(){ printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*"; }
 hr(){ echo "---------------------------------------------"; }
-note(){ printf '{"ts":"%s","stage":"%s","msg":"%s"}\n' "$TS" "$1" "$(printf %s "$2" | tr -d '"')" >> "$LEDGER"; }
+note(){ printf '{"ts":"%s","stage":"%s","msg":"%s"}\n' "$TS" "$1" "$(printf %s "$2" | tr -d '"')" >> "$LEDGER"
+  # 2026-11-21：同时写统一升级账本（state/ledger/upgrades.db），jsonl 只作原始流水
+  python3 "$WS/tools/upgrade-ledger.py" log "$1" "$2" >/dev/null 2>&1 || true; }
 die(){ say "✗ 中止：$*"; note abort "$*"; rm -f "$WS/state/work/.upgrade-running"; exit 1; }
 ver(){ timeout 120 openclaw --version 2>/dev/null | tail -1 | awk '{print $2}'; }
 latest(){ timeout 45 npm view openclaw version 2>/dev/null | tail -1; }
@@ -99,8 +103,16 @@ if [ -f "$WS/state/work/.upgrade-running" ] && ! pgrep -x node -a 2>/dev/null | 
 fi
 BUSY=$(pgrep -a -x node 2>/dev/null | grep -E "openclaw (update|upgrade)"; pgrep -a -x npm 2>/dev/null | grep -E "(i|install) -g openclaw")
 [ -n "$BUSY" ] && die "已有升级进程在跑：$BUSY"
-SCV=$(timeout 240 bash "$WS/tools/console-cmd.sh" selfcheck 2>&1 | grep -o 'PASS [0-9]* / WARN [0-9]* / FAIL [0-9]*' | tail -1)
-say "  自检 $SCV"
+# 2026-11-21 修：新版刚起时自检可能瞬时 FAIL（预热未完成），重试 3 次，任一 FAIL 0 即算通过
+SCV=""; SCFULL=$WS/state/work/upgrade-selfcheck-$TS.log; : > "$SCFULL"
+for try in 1 2 3; do
+  timeout 240 bash "$WS/tools/console-cmd.sh" selfcheck > "$SCFULL.try$try" 2>&1 || true
+  SCV=$(grep -o 'PASS [0-9]* / WARN [0-9]* / FAIL [0-9]*' "$SCFULL.try$try" | tail -1)
+  say "  自检(第 $try 次) $SCV"
+  case "$SCV" in *"FAIL 0"*) cat "$SCFULL.try$try" >> "$SCFULL"; break ;; esac
+  cat "$SCFULL.try$try" >> "$SCFULL"
+  [ "$try" -lt 3 ] && { say "  FAIL 非零，等 45 秒重试自检"; sleep 45; }
+done
 case "$SCV" in
   *"FAIL 0"*) PN=$(printf %s "$SCV" | sed -n 's/.*PASS \([0-9]*\) .*/\1/p'); if [ -z "$PN" ] || [ "$PN" -lt 10 ]; then die "自检通过项偏少（$SCV）"; fi ;;
   *) die "自检未通过或结果不可信（$SCV）" ;;
@@ -152,8 +164,14 @@ touch "$WS/state/work/.watchdog-pause"
 PAUSED=1
 trap '[ "${PAUSED:-0}" = 1 ] && rm -f "$WS/state/work/.watchdog-pause"' EXIT
 note install "start $TGT"
-timeout 1200 openclaw update --yes 2>&1 | tail -30
-RC=${PIPESTATUS[0]}
+# 2026-11-21 修：官方 openclaw update 在本机会因 doctor-failed 中止（10s SQLite 探针），改用 npm 直装
+PIN_TGT=$TGT
+timeout 1200 npm install -g "openclaw@$PIN_TGT" 2>&1 | tail -15
+INST_RC=$?
+INSTALLED=$(ver)
+say "  npm 直装 rc=$INST_RC 装后版本=$INSTALLED"
+[ "$INSTALLED" = "$PIN_TGT" ] || die "安装失败：期望 $PIN_TGT 实际 $INSTALLED"
+RC=$INST_RC
 rm -f "$UPFLAG"
 if [ "$RC" -ne 0 ]; then say "✗ 安装失败 rc=$RC，当前版本=$(ver)"; rollback; fi
 VAFTER=$(ver); if [ "$VAFTER" != "$TGT" ]; then say "✗ 装完版本仍是 $VAFTER（期望 $TGT）"; rollback; fi
@@ -165,7 +183,14 @@ bash "$WS/tools/restart-gateway.sh" --reason "升级到 $TGT" 2>&1 | tail -6
 if waithealth; then say "  /health 200"; else say "✗ 重启后不健康"; rollback; fi
 
 hr; say "⑤ 硬验证"
+# 2026-11-21 修：新版本首次启动较慢，agent/cron 计数可能还是 0；先等计数稳定再判定
 sleep 8
+for i in $(seq 1 12); do
+  AG0=$(acount); CR0=$(ccount)
+  [ "${AG0:-0}" -gt 0 ] && [ "${CR0:-0}" -gt 0 ] && break
+  say "  等待网关加载清单（第 $i 次：agent=${AG0:-0} cron=${CR0:-0}）"
+  sleep 10
+done
 NEWV=$(ver); SC=$(schemaver); AG=$(acount); CR=$(ccount); MF=$(migfail)
 say "  版本 $NEWV／schema $SC／agent $AG／cron $CR／失败迁移 $MF"
 FAILS=""

@@ -61,6 +61,9 @@ if [ "$DRY" = "1" ]; then
   exit 0
 fi
 
+# ---------- 1.5) 复用优先闸门（2026-11-21 主公令：先查经验再动手）----------
+bash "$WS/tools/exp-gate.sh" 升级 2>&1 | tee -a "$LOG" | sed -n '1,10p'
+
 # ---------- 2) 四库快照 ----------
 mkdir -p "$SNAP"
 say "快照数据库 → $SNAP"
@@ -87,6 +90,11 @@ PY
 echo "$OUT" | tee -a "$LOG"
 echo "$OUT" | grep -q "^snap_ok" || fail "数据库快照失败"
 [ "$(echo "$OUT" | grep -c '^ok')" -ge 3 ] || fail "有效快照少于 3 个"
+# 11.6 迁移要求的 custody 在 client/credentials.sqlite，一并备（非 sqlite 备份 API，用文件拷贝）
+if [ -f /home/j/.openclaw/client/credentials.sqlite ]; then
+  cp -f /home/j/.openclaw/client/credentials.sqlite "$SNAP/credentials.sqlite" && say "  已备份 credentials.sqlite"
+fi
+cp -f /home/j/.openclaw/state/agents-registry.json "$SNAP/agents-registry.json" 2>/dev/null && say "  已备份 agents-registry.json"
 
 # ---------- 3) 停看门狗 + 网关 ----------
 touch "$FLAG"
@@ -108,6 +116,25 @@ NEW=$(openclaw --version 2>/dev/null | awk '{print $2}')
 say "安装后版本：$NEW"
 [ "${ROLLBACK:-0}" = "0" ] && [ "$NEW" != "$TGT" ] && { ROLLBACK=1; ROLLBACK_REASON="版本未变为 $TGT（实际 $NEW）"; }
 
+# ---------- 4.5) 配置兼容 + state 库迁移（2026-11-21 新增）----------
+# 11.6 起 schema 已删除 agents.defaults.heartbeat；不摘掉会"装机成功但 agent/cron 加载为 0"
+if [ "${ROLLBACK:-0}" = "0" ]; then
+  say "配置兼容：摘除 agents.defaults.heartbeat（11.6 已无此键）"
+  python3 - /home/j/.openclaw/openclaw.json >>"$LOG" 2>&1 <<'PY' || say "  摘除脚本 rc=$?（不阻断）"
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+hb = d.get("agents", {}).get("defaults", {}).pop("heartbeat", None)
+json.dump(d, open(p, "w"), ensure_ascii=False, indent=2)
+print("removed heartbeat:", bool(hb))
+PY
+  say "doctor --fix（迁移 state 库 schema，需网关已停；此时网关已在第 3 步停止）"
+  timeout 900 openclaw doctor --fix >>"$LOG" 2>&1
+  DRC=$?
+  say "  doctor rc=$DRC"
+  [ "$DRC" != "0" ] && say "  ⚠ doctor 非零（不直接判失败，交由第 5 步健康校验与第 6 步版本/清单核对判定）"
+fi
+
 # ---------- 5) 重启 + 校验 ----------
 if [ "${ROLLBACK:-0}" = "0" ]; then
   say "启动网关（升级自持：网关已在第 3 步停止，此处直接拉起并按 health 校验）"
@@ -122,6 +149,14 @@ if [ "${ROLLBACK:-0}" = "0" ]; then
   say "restart_rc=$RRC health=$H"
   [ "$RRC" != "0" ] && { ROLLBACK=1; ROLLBACK_REASON="restart-gateway rc=$RRC"; }
   [ "$H" != "200" ] && { ROLLBACK=1; ROLLBACK_REASON="升级后 health=$H"; }
+  # 2026-11-21 新增：清单加载校验（11.6 曾出现配置校验失败导致 agents/cron 全为 0 的"空壳"）
+  if [ "${ROLLBACK:-0}" = "0" ]; then
+    ACNT=$(timeout 120 openclaw agents list --json 2>/dev/null | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d if isinstance(d,list) else d.get('agents',[])))" 2>/dev/null || echo 0)
+    CCNT=$(timeout 120 openclaw cron list --json 2>/dev/null | python3 -c "import json,sys;d=json.load(sys.stdin);j=d if isinstance(d,list) else d.get('jobs',[]);print(len(j))" 2>/dev/null || echo 0)
+    say "  清单：agents=$ACNT cron=$CCNT"
+    [ "${ACNT:-0}" -ge 30 ] || { ROLLBACK=1; ROLLBACK_REASON="agents 清单少（$ACNT < 30）"; }
+    [ "${CCNT:-0}" -ge 90 ] || { ROLLBACK=1; ROLLBACK_REASON="cron 清单少（$CCNT < 90）"; }
+  fi
 fi
 
 # ---------- 6) 失败回滚 ----------
@@ -138,6 +173,8 @@ if [ "${ROLLBACK:-0}" = "1" ]; then
     esac
     [ -f "$SNAP/$f" ] && cp -f "$SNAP/$f" "$dst"
   done
+  [ -f "$SNAP/credentials.sqlite" ] && cp -f "$SNAP/credentials.sqlite" /home/j/.openclaw/client/credentials.sqlite && say "  已回滚 credentials.sqlite"
+  [ -f "$SNAP/agents-registry.json" ] && cp -f "$SNAP/agents-registry.json" /home/j/.openclaw/state/agents-registry.json && say "  已回滚 agents-registry.json"
   ALLOW_UPGRADE_RESTART=1 bash "$WS/tools/restart-gateway.sh" --reason "升级失败回滚 $FROM" >>"$LOG" 2>&1
   H2=000
   for i in $(seq 1 40); do
@@ -158,6 +195,16 @@ say "稳定自检：${SC:-未取到}"
 PUC=$(bash "$WS/tools/post-upgrade-check.sh" 2>&1 | tail -1)
 say "兼容自检：${PUC:-未取到}"
 REVC=$(bash "$WS/tools/version-reconcile.sh" >/dev/null 2>&1; echo ok); say "两端版本对账：$REVC"
+# 2026-11-21 主公令：每次升级都落运行记录；技能若没跟上当天日期就写待更新提醒
+RUNS=/home/j/.openclaw/shared-skills/openclaw-upgrade/references/runs.md
+mkdir -p "$(dirname "$RUNS")" 2>/dev/null || true
+[ -f "$RUNS" ] || printf '# 升级运行记录（upgrade-panel.sh 自动追加）\n\n| 时间 | 从 | 到 | 结果 | agents | cron | 摘要 |\n|---|---|---|---|---|---|---|\n' > "$RUNS"
+printf '| %s | %s | %s | ok | %s | %s | upgrade-panel 自动 |\n' "$(date '+%F %H:%M')" "$FROM" "$NEW" "${ACNT:--}" "${CCNT:--}" >> "$RUNS"
+SK=/home/j/.openclaw/shared-skills/openclaw-upgrade/SKILL.md
+if ! grep -q "updated: $(date +%F)" "$SK" 2>/dev/null; then
+  mkdir -p "$WS/state/skills"
+  echo "$(date '+%F %H:%M') 升级 $FROM→$NEW 已完成，openclaw-upgrade 技能未回写当天（须补案例+坑+version+1）" >> "$WS/state/skills/pending-upgrade-skill.txt"
+fi
 nt "✅ 升级完成：$FROM → $NEW（health=200，快照 $SNAP）${SC:+｜$SC}"
 # ---------- 8) B 机同步升级（2026-11-07 主公令） ----------
 # B 的 shell 通道只对 agent 开放（CLI 调 system.run 会被拒绝），因此由 agent turn 执行。

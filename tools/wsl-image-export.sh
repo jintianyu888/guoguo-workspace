@@ -8,6 +8,29 @@ WSLX=/mnt/c/Windows/System32/wsl.exe
 E=/mnt/e/wsl-backup
 H=/mnt/h/wsl-backup
 KEEP=3
+# ⚠️ 本脚本执行 wsl.exe --export 会【终止 WSL 发行版】——网关与会话全部中断。
+# 因此只允许 00:00-08:00 窗内跑；窗内以外一律拒绝，除非显式 --force（2026-11-21 事故后加）。
+_h=$(date +%H)
+if [ "${1:-}" != "--force" ] && [ "$_h" -ge 8 ]; then
+  echo "[$(date '+%F %T')] 拒绝执行：wsl --export 会终止 WSL 发行版，只允许 00:00-08:00（现 $_h 点）。要强行跑加 --force" | tee -a "$LOG"
+  exit 9
+fi
+
+# Windows 互操作探测（2026-11-21：互操作坏了时 wsl.exe 直接 EINVAL，会产出 0B 垃圾）
+if ! timeout 20 /mnt/c/Windows/System32/wsl.exe --status >/dev/null 2>&1; then
+  echo "[$(date '+%F %T')] Windows 互操作不可用，跳过整机镜像（非失败）。修复需在 Windows 跑 wsl --shutdown" | tee -a "$LOG"
+  exit 0
+fi
+
+# 等备份/重活跑完再动手（wsl --export 会终止发行版，绝不能踩在备份上）
+if [ "${1:-}" != "--force" ] && [ -x "$W/tools/backup-wait-idle.sh" ]; then
+  WAIT_MAX=${WAIT_MAX:-3600}
+  if ! WAIT_MAX=$WAIT_MAX bash "$W/tools/backup-wait-idle.sh" >>"$LOG" 2>&1; then
+    echo "[$(date '+%F %T')] 等空闲超时，本次不导出（跳过，非失败）" | tee -a "$LOG"
+    exit 0
+  fi
+fi
+
 now=$(date +%Y%m%d-%H%M)
 name="ubuntu-$now.tar"
 mkdir -p "$E" "$H" "$W/state/work"

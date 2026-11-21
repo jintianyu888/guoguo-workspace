@@ -4,8 +4,14 @@
 # v1.1 修复: 删除范围严格限定在本次处理的盘（v1.0 会跨盘误删，2026-11-15 事故）
 set -u
 export PATH=/usr/bin:/bin
-APPLY=0; [ "${1:-}" = "--apply" ] && APPLY=1
-TARGET="${2:-all}"
+APPLY=0; TARGET=all
+# 2026-11-21 修正：原来只认 "--apply X"，写成 "retain-plan.sh H" 会静默变成 all（危险的跨盘处理）
+for a in "$@"; do
+  case "$a" in
+    --apply) APPLY=1 ;;
+    *) TARGET="$a" ;;
+  esac
+done
 KX=2; KD=1; EW=4; HM=6; ND=7; NW=4; NM=6
 MINKEEP=2
 dir_of() { case "$1" in X) echo /mnt/x/openclaw-backups;; D) echo /mnt/d/openclaw-backups;; E) echo /mnt/e/openclaw-backups;; H) echo /mnt/h/openclaw-backups;; NAS) echo /mnt/nas/archive/jinyu/openclaw-archives;; esac; }
@@ -58,7 +64,9 @@ for disk in $DISKS; do
   mk=$MINKEEP
   [ "$disk" = "D" ] && mk=1
   if [ "$cnt" -lt "$mk" ] && [ "$ntot" -gt 0 ]; then
-    echo "[$disk] ❌ 中止：保留份数 $cnt < 低限 $mk（防误删）"; exit 9
+    # 2026-11-21：份数低于保底 = 该盘「存量不足」（镜像没跟上），不是危险状态。
+    # 只跳过本盘删除并告警，不再 exit 9 拖垮整个保留流程。
+    echo "[$disk] ⚠ 存量不足：$cnt < 保底 $mk，本盘跳过删除（需补镜像，非故障）"; continue
   fi
   if [ "$cnt" -eq 0 ] && [ "$ntot" -gt 0 ]; then
     echo "[$disk] ❌ 中止：保留清单为空但有 $ntot 份归档，拒绝删除（防误删）"; exit 9

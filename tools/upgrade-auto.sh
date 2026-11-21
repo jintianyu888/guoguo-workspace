@@ -41,9 +41,12 @@ TGT=${OC_UPGRADE_TARGET:-$LATEST}
 say "目标版本 $TGT（成熟度 ${AGE} 天）"
 
 if [ "$EXEC" = "0" ]; then
-  printf '%s\n' "$TGT" > "$ARM"
-  say "已挂载 $ARM → 08:00 重启窗口执行升级"
-  notify "【升级】已挂载 OpenClaw $CUR → $TGT（成熟度 ${AGE} 天），今天 08:00 窗口自动执行"
+  # 2026-11-21 主公令：不再自动挂载。只生成提案，等主公批准后由人工 arm。
+  PROP=$W/state/work/.upgrade-proposal.json
+  printf '{"target":"%s","current":"%s","maturity_days":%s,"at":"%s","approved_by":null}\n' \
+    "$TGT" "$CUR" "$AGE" "$(date '+%F %T')" > "$PROP"
+  say "已生成升级提案 $PROP（未挂载，等主公批准）"
+  notify "【升级待批】OpenClaw $CUR → $TGT（已发布 ${AGE} 天）。回复【批准升级 $TGT】我才会执行；不批就不动。"
   exit 0
 fi
 

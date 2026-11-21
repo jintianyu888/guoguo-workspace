@@ -57,7 +57,7 @@
 - 看板：tools/dashboard-gen.py + tools/dashboard-serve.py（127.0.0.1:18810，请求即重生成）
 - 任务账本 state/tasks/tasks.json 为唯一真源；页脚任务区由此渲染
 
-- 时间表唯一真源：docs/时间表与窗口规则-20261031.md（建/改任务先对表，别处冲突即改指针）；核验 python3 tools/schedule-audit.py（撞窗 rc=1）
+- 时间表唯一真源：**docs/调度总表-真源.md**（L0–L3 分级 + 固定槽 + 长任务保完成；建/改任务先对表，别处冲突即改指针）；核验 python3 tools/schedule-audit.py（撞窗 rc=1）、bash tools/r25-l3-window.sh
 
 
 ## 不卡住机制（2026-11-08 主公令：让自己和别的管家都别卡住）
@@ -103,7 +103,7 @@
 - 新增规矩的流程：①写下可检查的判据 ②加进 rules.json ③跑一次确认能红能绿 ④改 AGENTS.md 指向 rules.json（不重复抄条文）。
 
 ## 复用优先（2026-11-15 主公令 · 硬性）
-- **第一动作**：`python3 tools/exp.py 关键词` 查成功经验索引（389 条，含 Windows 侧资产）；命中即复用，别再写新的。
+- **第一动作（2026-11-21 主公令升级）**：`bash tools/skill-gate.sh "关键词" --agent main` —— 一次搜共享技能 + 经验索引（389 条，含 Windows 侧资产）+ tools 脚本，并自动落回执到 `state/skills/lookups/`；命中即复用，别再写新的。单查经验仍可用 `python3 tools/exp.py 关键词`。没回执视为没查（规则 R28，每日闸门核）。
 - **动手写脚本/流程前，先查有没有现成的**：① `ls tools/ | grep 关键词` ② `bash tools/skills-sync.sh` 看共享技能 ③ 面板按钮对应的 server.js 端点 ④ `state/log/worklog.jsonl` 与领域日志（含 Windows 侧 E:\openclaw-tools\、桌面 desktop-tools\）5 `state/work/*.log` 历史执行记录。
 - **检索面要够宽**：Windows 侧脚本与其日志不在 WSL 工作区里，只搜 `state/work/` 会得出「从没跑过」的错误结论（2026-11-15 vhdx 压缩就栽在这）。
 - **命中即复用**，要改就改旧的并升版本号；确实没有再新建，且新建后必须回写一条索引（技能或 docs），否则下次还会重造。
@@ -112,6 +112,7 @@
 - 做的每件事都要入账，四层：任务账本 state/tasks/tasks.db（计划/状态）｜工作日志 state/log/worklog.jsonl（每个动作：时间/类别/对象/结果/证据/回滚/task=号）｜领域账本（备份/告警/额度/评分）｜说明文档 docs/。
 - 动手后用 tools/worklog.py add 记一条：python3 tools/worklog.py add 类别 对象 结果 evidence=... rollback=... task=...；纯读取/查询/聊天不记。
 - 改脚本/配置/cron/权限、删数据、部署、对外连接、做决定、出故障——必须记，且写清怎么验的、怎么回滚。
+- **定时任务也统一入账（2026-11-21 主公令）**：100 个 cron 的每次运行统一进 state/ledger/jobs.db（tools/job-ledger.py，oc-job-ledger.timer 每 15 分钟零 token 同步）。判断「跑没跑、成没成」只查 jobs.db（`python3 tools/job-ledger.py report 24`），state/work/*.log 仅作排障原始日志。
 - **state 库只准走工具入口**（2026-11-10）：state/ 下的 SQLite（tasks.db／eval.db／backup.db／alerts.db 等）禁止用 sqlite3 CLI 或其他外部进程直接打开——护栏会拒（external sqlite3 cannot open databases under the active OpenClaw state directory），每天约 90 条假错误掩盖真问题。读写走对应工具：tools/tasks-db.py、tools/eval-ledger.py、tools/facts.py；临时要原始 SQL 时先 cp 到 /tmp 查，不直连原库。
 - 日报 md（docs/工作日志-YYYY-MM.md）由账本重渲染，禁止手改；每日 23:20 随 GitHub 同步一起进仓。
 - 细则：docs/统一账本与记录规则-20261110.md
@@ -175,9 +176,9 @@
 - **评审并发 ≤2 个单元**，禁止堆叠多轮；评审被拖垮时先止血再重发。
 - 根因档案：docs/会话卫生与事件循环保护规则-20261101.md（同步快照读 async=false 阻塞事件循环）。
 
-- 四大管家定时任务统一时间表（2026-11-04 主公令）：docs/四大管家时间表-20261104.md —— 时间对齐、13:00 果果统一汇总与验收；改 cron 前先改此表。
+- 四大管家定时任务统一时间表已并入唯一真源 docs/调度总表-真源.md（旧 docs/四大管家时间表-20261104.md 仅存档）—— 时间对齐、13:00 果果统一汇总与验收；改 cron 前先改真源。
 
-<!-- COMMON:BEGIN ver=74303b45 -->
+<!-- COMMON:BEGIN ver=c90f03b0 -->
 # 管家通用守则（主公硬性·所有管家共用）
 
 > 单一可信源。改本文件 → 运行 tools/agent-common-sync.sh --apply 自动写入各管家 AGENTS.md 的只读标记块（含版本号）。
@@ -204,6 +205,9 @@
 - 改动必须落文件（脚本/配置/AGENTS.md），禁止凭对话记忆；改完从文件读回验证。
 - 重大改动前先备份，失败禁止继续。
 - 语音转写为空时不要猜、不要编；用 bash tools/asr-last.sh 1 补转，仍失败则报果果。
+- **开工先查技能（2026-11-21 主公令·全局硬性）**：任何管家、任何活，动手前第一动作是查现成的：① `bash tools/skill-gate.sh "<任务关键词>"`（同时搜共享技能 + 经验索引 + 工具目录，并自动落回执到 workspace/state/skills/lookups/）② 命中就照技能做，改也要改旧的不新建 ③ 没命中才自己写，写完当轮必须沉淀成技能（skill-new.sh → --publish）。
+- **没有回执视为没查**：`state/skills/lookups/` 里当天没有你的回执，视为违反本规则；果果的每日闸门与 13:00 管家自审要对账。
+- **禁止重复造轮子**：同一功能已有脚本/技能再写一份，视为不合格交付，退回重做。
 
 ## 四、成本（硬性·必知）
 - 模型余额、额度、价格、路由以果果的模型经济中枢为准（tools/model-econ.sh），不自行抓取换算。

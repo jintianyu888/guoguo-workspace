@@ -20,8 +20,9 @@ for d in X D E H NAS; do
   out=$(bash $W/tools/backup-retain-plan.sh --apply $d 2>&1)
   rc=$?
   echo "$out" | while IFS= read -r l; do say "[$d] $l"; done
-  [ $rc -eq 0 ] || { say "[$d] retain-plan rc=$rc，本轮终止"; exit 2; }
+  if [ $rc -ne 0 ]; then FAILED="${FAILED:-} $d"; say "[$d] retain-plan rc=$rc（该盘跳过，不阻塞其它盘与隔离清理）"; fi
 done
+[ -n "${FAILED:-}" ] && say "⚠ 隔离失败盘:${FAILED} — 只影响该盘保留，隔离区清理照跑"
 
 # 2) 清理隔离区：仅 龄>QDAYS 且 该归档在其它盘仍有副本
 $LED scan >/dev/null 2>&1
@@ -36,5 +37,6 @@ done
 
 $LED scan >/dev/null 2>&1
 python3 $W/tools/exec-ledger.py retention-import >/dev/null 2>&1
+python3 $W/tools/retention-ledger.py import >/dev/null 2>&1   # 2026-11-21：保留动作进 backups.db
 say '=== 自动保留结束'
 exit 0

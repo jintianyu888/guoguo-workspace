@@ -1,76 +1,28 @@
-import zipfile,os,zlib,re
-import xml.etree.ElementTree as ET
-from PIL import Image, ImageDraw, ImageFont
-import pikepdf
+import io,os,pikepdf,shutil
+from PIL import Image
 from pikepdf import Name, Dictionary
-SRC="/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-8a8fb08a-cecb-4042-bcd5-12a3a664989b/input-20_Nov_单词填空---ce22f3c7-b127-4339-8d62-8eb40a41d60f.docx"
-OUT="/home/j/openclaw-workspaces/print/out/20_Nov_单词填空_打印版.pdf"
-TITLE="20 Nov 单词填空"
-LAT="/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"; LATB="/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf"; CJK="/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
-W="{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-root=ET.fromstring(zipfile.ZipFile(SRC).read("word/document.xml"))
-paras=["".join(t.text or "" for t in p.iter(W+"t")).strip() for p in root.iter(W+"p")]
-paras=[p for p in paras if p]
-pairs=[(paras[i],paras[i+1]) for i in range(0,len(paras)-1,2)]
-print("pairs",len(pairs))
-Wp,Hp=2481,3507; M=170; TW=Wp-2*M
-def F(p,s): return ImageFont.truetype(p,s)
-is_cjk=lambda ch: bool(re.match(r"[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]", ch))
-def toks(s):
-    o=[];i=0
-    while i<len(s):
-        ch=s[i]
-        if ch==" ":o.append(" ");i+=1;continue
-        if is_cjk(ch):o.append(ch);i+=1;continue
-        j=i
-        while j<len(s) and not is_cjk(s[j]) and s[j]!=" ":j+=1
-        o.append(s[i:j]);i=j
-    return o
-def mk(FS):
-    B=F(LAT,FS); C=F(CJK,FS); LH=int(FS*1.30); PAD=14
-    cw=[int(TW*0.46), TW-int(TW*0.46)]
-    def wrap(s,mw):
-        lines=[];cur="";w=0
-        for tk in toks(s):
-            a=C.getlength(tk) if any(is_cjk(c) for c in tk) else B.getlength(tk)
-            if w+a>mw and cur.strip():
-                lines.append(cur.rstrip());cur="" if tk==" " else tk;w=0 if tk==" " else a
-            else: cur+=tk;w+=a
-        if cur.strip():lines.append(cur.rstrip())
-        return lines or [""]
-    hdr_h=LH+2*PAD
-    rows=[[wrap(a,cw[0]-30),wrap(b,cw[1]-30)] for a,b in pairs]
-    hs=[max(len(r[0]),len(r[1]))*LH+2*PAD for r in rows]
-    return B,C,LH,PAD,cw,rows,hs,hdr_h,M+120+hdr_h+sum(hs)+M
-for FS in range(92,24,-2):
-    B,C,LH,PAD,cw,rows,hs,hdr_h,total=mk(FS)
-    if total<=Hp: break
-print("FS",FS,"total",total)
-img=Image.new("RGB",(Wp,Hp),(255,255,255)); d=ImageDraw.Draw(img)
-HB=F(LATB,FS); HC=F(CJK,FS); TF=F(LATB,54); TC=F(CJK,54)
-def draw(x,y,s,font,cjf):
-    for ch in s:
-        f=cjf if is_cjk(ch) else font
-        d.text((x,y),ch,font=f,fill=(0,0,0));x+=f.getlength(ch)
-draw(M,M,TITLE+"（%d 词）"%len(pairs),TF,TC)
-y=M+120
-d.rectangle([M,y,M+TW,y+hdr_h],fill=(238,238,238))
-draw(M+14,y+PAD,"单词（原词 + 释义）",HB,HC)
-draw(M+cw[0]+14,y+PAD,"默写（挖空 + 释义）",HB,HC)
-d.line([(M,y),(M+TW,y)],fill=(110,110,110),width=2); y+=hdr_h
-top=y
-for r in range(len(rows)):
-    h=hs[r]
-    for k,ln in enumerate(rows[r][0]): draw(M+14,y+PAD+k*LH,ln,B,C)
-    for k,ln in enumerate(rows[r][1]): draw(M+cw[0]+14,y+PAD+k*LH,ln,B,C)
-    d.line([(M,y),(M+TW,y)],fill=(110,110,110),width=2); y+=h
-d.line([(M,y),(M+TW,y)],fill=(110,110,110),width=2)
-for x in (M,M+cw[0],M+TW): d.line([(x,top),(x,y)],fill=(110,110,110),width=2)
-raw=zlib.compress(img.tobytes(),6)
-pdf=pikepdf.new(); p=pdf.add_blank_page(page_size=(595.28,841.89))
-st=pdf.make_stream(raw); st.Type=Name.XObject; st.Subtype=Name.Image
-st.Width=Wp; st.Height=Hp; st.BitsPerComponent=8; st.ColorSpace=Name.DeviceRGB; st.Filter=Name.FlateDecode
-p.Resources=Dictionary(XObject=Dictionary(Im0=st))
-p.Contents=pdf.make_stream(("q 595.28 0 0 841.89 0 0 cm /Im0 Do Q").encode())
-pdf.save(OUT); print("saved",os.path.getsize(OUT))
-img.resize((715,1011),Image.LANCZOS).save("/home/j/openclaw-workspaces/print/docx_preview.png"); print("ok")
+P=["/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-6714ccca-fd77-4645-b5d2-70b1f641e86a/input-5902436d-9895-49c8-a749-84d292c8f96a.jpg",
+   "/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-fbb17033-112a-40a1-9545-660ded920bc5/input-59bc733c-16f5-4517-b2d4-dbd2a16e7fa0.jpg",
+   "/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-14d4db03-0f23-4422-a666-341a7f411b0e/input-4b93a585-32da-45be-afb8-07571c9ec2a7.jpg",
+   "/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-91574ed4-0d64-473e-b5e2-e11f011c55c8/input-53dff274-c859-4c7f-8471-1342cde45e26.jpg",
+   "/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-40c65ecd-749e-47a3-bae7-f8fbbb2076b7/input-0fd52146-e6ea-436a-8d87-93c6bdfc1383.jpg"]
+out="/home/j/openclaw-workspaces/print/out/20261121_喜欢你_5页版_A4.pdf"
+A4W,A4H=595.28,841.89; M=12
+pdf=pikepdf.new()
+for src in P:
+    im=Image.open(src).convert("L"); w,h=im.size
+    s=min((A4W-2*M)/w,(A4H-2*M)/h); pw,ph=w*s,h*s
+    buf=io.BytesIO(); im.save(buf,"JPEG",quality=93,optimize=True)
+    page=pdf.add_blank_page(page_size=(A4W,A4H))
+    st=pdf.make_stream(buf.getvalue()); st.Type=Name.XObject; st.Subtype=Name.Image
+    st.Width=w; st.Height=h; st.BitsPerComponent=8; st.ColorSpace=Name.DeviceGray; st.Filter=Name.DCTDecode
+    page.Resources=Dictionary(XObject=Dictionary(Im0=st))
+    page.Contents=pdf.make_stream(("q %.4f 0 0 %.4f %.4f %.4f cm /Im0 Do Q"%(pw,ph,(A4W-pw)/2,(A4H-ph)/2)).encode())
+    print(w,h,round(s,3))
+pdf.docinfo["/Title"]="喜欢你 5页版"
+pdf.save(out); print("saved",os.path.getsize(out))
+import pypdfium2 as pdfium
+d=pdfium.PdfDocument(out); print("pages",len(d))
+d[0].render(scale=1.0).to_pil().convert("RGB").resize((660,933)).save("/home/j/openclaw-workspaces/print/xhn5_p1.png")
+shutil.copy2(P[0],"/home/j/openclaw-workspaces/print/scores/files/20261121_喜欢你_5页版_第1页.jpg")
+print("ok")

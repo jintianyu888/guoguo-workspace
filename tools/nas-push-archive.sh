@@ -32,7 +32,7 @@ if [ "$1" = "create" ]; then
     cmt=$(stat -c %Y "$cand" 2>/dev/null || echo 0)
     [ "$csz" -gt 10737418240 ] && [ $(( $(date +%s) - cmt )) -lt 43200 ] && { echo "$cand"; break; }
   done | head -1)
-  if [ -n "${DUPF:-}" ]; then
+  if [ -n "${DUPF:-}" ] && [ "${FORCE_PACK:-0}" != "1" ]; then
     echo "=== $(date '+%F %T') 今日已有归档 $(basename "$DUPF")，跳过重复打包（仍执行落盘/推送） ===" >> "$LOG"
     SKIP=1
   else

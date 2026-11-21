@@ -1009,7 +1009,7 @@ body.hud .wrap{position:relative;z-index:2}
 body.hud{background:
   radial-gradient(900px 520px at 15% -10%,rgba(21,106,169,.18),transparent 60%),
   radial-gradient(700px 420px at 110% 110%,rgba(27,76,113,.16),transparent 60%),#0b2132}
-body.hud #hudcanvas{opacity:.32;filter:saturate(1.3);z-index:6}
+body.hud #hudcanvas{opacity:.32;filter:saturate(1.3);z-index:0}   /* v4.6.40 字符雨压到内容层下方（.wrap z-index:1），仅改层序，opacity/saturate 未动 */
 body.hud{background:
   repeating-linear-gradient(0deg,rgba(28,142,227,.045) 0 1px,rgba(0,0,0,0) 1px 46px),
   repeating-linear-gradient(90deg,rgba(28,142,227,.045) 0 1px,rgba(0,0,0,0) 1px 46px),
@@ -1369,6 +1369,20 @@ body.hud .logpanel>h2{
 body.hud .panel .panel.nest>h2{height:auto!important;min-height:0!important;max-height:none!important;
   flex:0 0 auto!important;line-height:1.4!important;padding:0!important;margin:0 0 4px!important;
   font-size:12px!important;font-weight:400!important;letter-spacing:0!important;display:block!important}
+
+/* ===== v4.6.39 实况窗方案A修订（主公 2026-11-21 11:22 两条硬约束：配色一律不动 / 格内文字统一 15px；放末位赢过 1058~1068 旧值） ===== */
+body.hud .pc>.m{padding:5px 6px 5px!important;gap:2px!important;align-items:center!important;justify-content:center!important;border-radius:9px!important}
+body.hud .pc>.m>.ic{display:none!important}
+body.hud .pc>.m>.top{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;width:100%!important}
+body.hud .pc>.m>.top>.lbl,body.hud .pc>.m>.top>.val,body.hud .pc>.m>.top>.val>small{font-size:15px!important;line-height:1.15!important}
+body.hud .pc>.m>.top>.val{order:1;font-weight:800!important;font-variant-numeric:tabular-nums!important;color:#dcedfa!important;text-shadow:none!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+body.hud .pc>.m>.top>.val>small{font-weight:600!important;margin-left:2px!important;vertical-align:baseline!important}
+body.hud .pc>.m>.top>.lbl{order:2;font-weight:500!important;color:#59acea!important;letter-spacing:.2px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+body.hud .pc>.m>.sub,body.hud .pc>.m>.spark{display:none!important}
+body.hud .pc>.m>.bar{width:100%!important;height:3px!important;border-radius:2px!important;background:rgba(86,171,234,.16)!important;overflow:hidden!important;order:3}
+body.hud .pc>.m>.bar>b{background:#3e9fe7!important}
+body.hud .pc>.m.c-y>.top>.val{color:#d9edfc!important}
+body.hud .pc>.m.c-r>.top>.val{color:#ffffff!important}
 </style>
 </head>
 <body class="hud">
@@ -2596,8 +2610,9 @@ function renderPC(){
   }
   function mod(label, val, unit, pct, cls, sub, subHTML){
     var pv=Math.max(0,Math.min(100,Number(pct)||0));
-    var SLB={'内存占用':'内存','事件循环延迟':'延迟','磁盘IO读取':'磁盘读','磁盘IO写入':'磁盘写','网络吞吐':'网络','网络接收':'网收','网络发送':'网发','GPU 温度':'GPU温','CPU 温度':'CPU温','提交队列':'提交','完成队列':'完成','会话数':'会话','活跃会话':'活跃','CPU 风扇转速':'CPU扇','GPU 风扇':'GPU扇','提交内存':'提交','磁盘 IO':'磁盘IO','网关启动':'网关运行','网关延迟':'网延迟','网络链路':'链路','WSL 虚拟机':'WSL','OpenClaw 网关':'OC网关','网络吞吐':'吞吐'};
-    label=(SLB[label]||String(label).replace(/\s+/g,'')).slice(0,5);
+    var SLB={'内存占用':'进程内存','事件循环延迟':'延迟','GPU 温度':'GPU温','CPU 温度':'CPU温','活跃会话':'会话','CPU 风扇转速':'CPU扇','GPU 风扇':'GPU扇','提交内存':'提交','磁盘 IO':'磁盘IO','网关启动':'运行','网关延迟':'网延迟','网络链路':'链路','WSL 虚拟机':'WSL','OpenClaw 网关':'网关','网络吞吐':'吞吐','SSD 温度':'SSD温'};   /* v4.6.38 标签改名表（主公/管家定稿） */
+    label=(SLB[label]||String(label).replace(/\s+/g,'')).replace(/\s+/g,'');   /* v4.6.38 取消 slice(0,5) 静默截断 */
+    if(label.length>4){ (window.__labelTooLong=window.__labelTooLong||[]).push(label); console.warn('[tile] label 超过 4 字：'+label); }
     var unit2=String(unit||'').replace(/\s+/g,'').replace('MHz','M').replace('GB/s','G/s').replace('MB/s','M/s').replace('KB/s','K/s');
     var vtxt=String(val==null?'':val).replace(/\s+/g,'')+unit2;
     var lv=vtxt.length>10?'3':(vtxt.length>7?'2':(vtxt.length>5?'1':'0'));
@@ -2608,7 +2623,7 @@ function renderPC(){
   }
   function diskHTML(){
     var seenD = {};
-    return pds.map(function(p){
+    return pds.map(function(p, di){
       var nm = p.name || '磁盘';
       seenD[nm] = (seenD[nm] || 0) + 1;
       var dupTotal = pds.filter(function(x){ return x.name === nm; }).length;
@@ -2628,7 +2643,7 @@ function renderPC(){
       if (p.tempC != null) subTxt += ' · ' + p.tempC + '°C';
       var subHtml = subTxt;
       volList.forEach(function(m){ var cc = MC[m] || '#7fbfef'; subHtml = subHtml.replace(m, '<b class="mnt" style="color:' + cc + '">' + m + '</b>'); });
-      return mod(short + tag + ' · ' + (p.media === 'SSD' ? 'SSD' : 'HDD'), val, unit, pct, (pct > 90 ? 'r' : (pct > 75 ? 'y' : '')), subTxt, subHtml);
+      return mod((volList[0] || ('HDD' + (((di|0) + 1)))), val, unit, pct, (pct > 90 ? 'r' : (pct > 75 ? 'y' : '')), subTxt, subHtml);   /* v4.6.39 磁盘格用盘符/HDDn，禁止 17 字长名 */
     }).join('');
   }
   var diskSub = pds.length ? (pds.length+' 块 · SSD '+ssd+' / HDD '+hdd+(pds.map(function(x){return x.tempC!=null;}).some(Boolean)?' · 有温度':'')) : '—';
@@ -2652,8 +2667,8 @@ function renderPC(){
       function brand(n){ var s = String(n || ''); if (/Lexar|NM1090/i.test(s)) return '雷克沙'; if (/Fanxiang|S790/i.test(s)) return '梵想'; return s.split(' ')[0]; }
       return ds.map(function(x){
         var t = (x.tempC == null) ? null : x.tempC;
-        if (t == null) return mod(brand(x.name)+' 温度', '—', '', 0, '', String(x.name) + ' · 不可查');
-        return mod(brand(x.name)+' 温度', t, '°C', Math.min(100, t), (t > 80 ? 'r' : (t > 70 ? 'y' : 'g')), String(x.name) + ' · NVMe');
+        if (t == null) return mod('SSD温', '—', '', 0, '', String(x.name) + ' · 不可查');
+        return mod('SSD温', t, '°C', Math.min(100, t), (t > 80 ? 'r' : (t > 70 ? 'y' : 'g')), String(x.name) + ' · NVMe');
       }).join('');
     })() +
     mod('磁盘 IO', ((io.readMBs||0)+(io.writeMBs||0)).toFixed(1), 'MB/s', io.busyPct, (io.busyPct>80?'r':(io.busyPct>40?'y':'')), '读 '+(io.readMBs||0)+' / 写 '+(io.writeMBs||0)+' · 忙 '+(io.busyPct||0)+'%') +
@@ -2706,6 +2721,7 @@ diskHTML();
   try{ el.insertAdjacentHTML('beforeend', statTiles()); }catch(e){}
   try{ applyTileOrder(el); }catch(e){}
   try{ decorateTiles(el); }catch(e){}
+  try{ dedupeLabels(); }catch(e){}
   /* 列数由 keepTwoRows 观察器统一维护 */
 }
 
@@ -2759,6 +2775,26 @@ function decorateTiles(root){
   }
 }
 var TILE_ORDER = (function(){ try { return JSON.parse(localStorage.getItem('infowin.tileOrder') || '[]') || []; } catch(e) { return []; } })();
+function dedupeLabels(){
+  /* v4.6.38 同名格子必须唯一：CPU温1/2、CPU扇1~4、GPU扇1/2、SSD温1/2（按 DOM 顺序编号） */
+  var pc=document.getElementById('pc'); if(!pc) return;
+  var tiles=[].slice.call(pc.children).filter(function(n){ return n.classList && n.classList.contains('m'); });
+  var groups={};
+  tiles.forEach(function(t){
+    var lb=t.querySelector('.lbl'); if(!lb) return;
+    if(!t.hasAttribute('data-lb0')) t.setAttribute('data-lb0', lb.textContent.trim());
+    var base=t.getAttribute('data-lb0');
+    (groups[base]=groups[base]||[]).push(t);
+  });
+  Object.keys(groups).forEach(function(k){
+    var arr=groups[k];
+    arr.forEach(function(t,i){
+      var lb=t.querySelector('.lbl'); if(!lb) return;
+      lb.textContent = arr.length>1 ? (k+(i+1)) : k;
+      if(lb.textContent.length>4){ (window.__labelTooLong=window.__labelTooLong||[]).push(lb.textContent); }
+    });
+  });
+}
 function tileKey(n){ var l = n.querySelector('.lbl'); return l ? l.textContent.trim() : ''; }
 function applyTileOrder(el){
   if (!TILE_ORDER.length) return;
@@ -3313,9 +3349,10 @@ function render(){  setTimeout(function(){ try{renderModelSubs(); renderLocal();
     if(!cur){ gv.textContent='v?'; gv.className='gwver'; gv.title='版本未取到（网关信息暂缺）'; }   /* v4.5.10 窄屏也不许出现空胶囊 */
     if(cur){
       if(lt && String(lt)!==String(cur)){
-        gv.textContent='v'+cur+' → v'+lt;   /* v4.5.11 地址胶囊搬走后恢复完整版本号 */
+        var _ag=(window.UPG_AGE===null||window.UPG_AGE===undefined)?null:window.UPG_AGE;   /* v4.6.42 新版本天数并入版本号，不再单独占条 */
+        gv.textContent='v'+cur+' → '+String(lt).replace(/^.*\//,'').replace(/^v/,'')+(_ag===null?'':'·'+_ag+'天');
         gv.className='gwver up';
-        gv.title='有新版本 v'+lt+'（当前 v'+cur+'）';
+        gv.title='有新版本 v'+lt+'（当前 v'+cur+'）'+(_ag===null?'':'，发布 '+_ag+' 天')+(window.UPG_GATE?'：已满 7 天，可升级':'：未满 7 天，建议再等')+'；升级由主公决定';
       } else if(lt){
         gv.textContent='v'+cur;   /* v4.5.9 绿色已表意，去掉「已最新」省宽度 */
         gv.className='gwver ok';
@@ -5064,6 +5101,22 @@ function segBadge(){
   bind('pcShutdown','shutdown','电脑关机');
   bind('pcRestart','restart','电脑重启');
   bind('pcCancel','cancel','取消关机');
+})();
+</script>
+<script>
+/* v4.6.42 升级提示并入运维台版本号（主公 2026-11-21 令：不单独占条，写进版本号里） */
+(function(){
+  window.UPG_AGE=null; window.UPG_GATE=false;
+  function load(){
+    fetch('/api/upgrade',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+      if(!d||!d.ok||!d.latest||d.latest==='未采集') return;
+      var a=(d.latest_age_days===undefined)?null:d.latest_age_days;
+      if(a===window.UPG_AGE && (!!d.gate_ok)===window.UPG_GATE) return;
+      window.UPG_AGE=a; window.UPG_GATE=!!d.gate_ok;
+      try{ render(); }catch(e){}
+    }).catch(function(){});
+  }
+  load(); setInterval(load, 600000);
 })();
 </script>
 </body>

@@ -98,25 +98,46 @@ if [ -n "$BA" ]; then
   [ "$AGEH" -gt 30 ] && say "注意：备份偏旧（>30h），但仍按窗口执行"
 fi
 
-# 2.5) 升级挂载：有 .upgrade-armed 就由本窗口直接升级（替代一次纯重启，2026-11-17）
+# 2.5) 升级挂载：必须「判定件 + 主公批准件」双件齐全才升级（2026-11-21 主公令）
 ARMF=$W/state/work/.upgrade-armed
+APPR=$W/state/work/.upgrade-approved
 if [ -f "$ARMF" ]; then
   TGT=$(head -1 "$ARMF" | tr -d '[:space:]')
-  say "发现升级挂载：${TGT:-空} → 本窗口执行升级（替代本次重启）"
-  if [ -z "$TGT" ]; then say "挂载文件为空，忽略并删掉"; rm -f "$ARMF"; else
-  if [ "$DRY" = "1" ]; then say "dry-run：将执行 bash tools/upgrade-openclaw.sh --version=$TGT"; exit 0; fi
-  bash "$W/tools/upgrade-openclaw.sh" --version="$TGT" 2>&1 | tail -40
-  URCP=${PIPESTATUS[0]}
-  if [ "$URCP" = "0" ]; then
-    rm -f "$ARMF"
-    printf '%s %s\n' "$(date +%F)" "$(timeout 60 openclaw --version 2>/dev/null | tail -1 | awk '{print $2}')" > "$W/state/work/.upgrade-auto-done"
-    say "升级分支完成 rc=0"
+  if [ -z "$TGT" ]; then
+    say "挂载文件为空，忽略并删掉"; rm -f "$ARMF"
   else
-    say "升级失败 rc=$URCP（升级脚本已尝试自动回滚），保留挂载文件供排查"
-    notify "【升级窗口】升级失败 rc=$URCP，已尝试回滚，详见 state/work/upgrade-ledger.jsonl"
-  fi
-  say "===== 重启窗口结束（升级分支）====="
-  exit 0
+    APPROVED_BY=$(python3 - "$APPR" "$TGT" <<'PY' 2>/dev/null || true
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    print(""); raise SystemExit
+print((d.get("approved_by") or "") if d.get("target")==sys.argv[2] else "")
+PY
+)
+    if [ -z "$APPROVED_BY" ]; then
+      say "⚠ 有升级挂载 $TGT，但缺主公批准件 → 本窗口不升级，只做常规重启"
+      notify "【升级拦截】$TGT 未获主公批准，本次窗口不升级"
+      rm -f "$ARMF"
+    else
+      say "主公已批准（$APPROVED_BY）→ 执行升级 $TGT（替代本次重启）"
+      if [ "$DRY" = "1" ]; then
+        say "dry-run：将执行 bash tools/upgrade-openclaw.sh --version=$TGT"; exit 0
+      fi
+      FORCEFLAG=""; [ "$(python3 -c "import json;print(int(bool(json.load(open('$APPR')).get('force'))))" 2>/dev/null || echo 0)" = "1" ] && FORCEFLAG="--force"
+      bash "$W/tools/upgrade-openclaw.sh" --version="$TGT" $FORCEFLAG >> "$LOG" 2>&1
+      URCP=$?
+      if [ "$URCP" = "0" ]; then
+        printf '%s %s\n' "$(date +%F)" "$(timeout 60 openclaw --version 2>/dev/null | tail -1 | awk '{print $2}')" > "$W/state/work/.upgrade-auto-done"
+        rm -f "$ARMF" "$APPR"
+        say "升级分支完成 rc=0"
+      else
+        say "升级失败 rc=$URCP（已尝试自动回滚），保留双件供排查"
+        notify "【升级窗口】升级失败 rc=$URCP，已尝试回滚，详见 state/work/upgrade-ledger.jsonl"
+      fi
+      say "===== 重启窗口结束（升级分支）====="
+      exit 0
+    fi
   fi
 fi
 
