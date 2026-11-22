@@ -64,7 +64,12 @@ function startLogTail() {
   if (LOG_PROC) return;
   let p;
   try {
-    p = spawn(CLI, ['logs', '--follow', '--limit', '60', '--interval', '1500'], { env: process.env });
+    // 2026-11-22 改：不再用 openclaw logs --follow 走 RPC 轮询（每 1.5s 新建一次 ws 连接，
+    // 实测 3 小时里造成 7000+ 次 logs.tail 连接，连带插件被迫退役、网关内存涨到 19GB）。
+    // 直接 tail 本地日志文件，零网关负载；跨天或文件轮转由 tail -F 自行处理。
+    const LOGDIR = require('path').join(process.env.HOME || '/home/j', '.openclaw', 'logs');
+    const logFile = require('path').join(LOGDIR, 'openclaw-' + new Date().toISOString().slice(0,10) + '.log');
+    p = spawn('tail', ['-n', '60', '-F', logFile], { env: process.env });
   } catch (e) { ERR.logs = String(e.message || e); return; }
   LOG_PROC = p; LOG_ALIVE = true;
   let buf = '';
@@ -635,7 +640,20 @@ function build() {
     buildId: buildId(),
     version: readVersion(),
     ledger: (loadLedger(), LEDGER),
-    agentReply: (CACHE.agentReply || []).slice(0, 64),
+    agentReply: (function(){
+      /* v4.6.42 回复状态行追加「上下文占用」：只认 totalTokens/contextTokens 且 fresh=true，取不到给 null */
+      const sessByKey = {};
+      for (const se of sessions) { const k = se.key || se.sessionKey; if (k) sessByKey[k] = se; }
+      return (CACHE.agentReply || []).slice(0, 64).map(function(r){
+        const se = (r && r.key && sessByKey[r.key]) ? sessByKey[r.key] : null;
+        let ctx = null;
+        if (se && se.totalTokensFresh === true && typeof se.totalTokens === 'number'
+            && typeof se.contextTokens === 'number' && se.contextTokens > 0 && se.totalTokens >= 0) {
+          ctx = { used: se.totalTokens, window: se.contextTokens, at: se.updatedAt || null };
+        }
+        return Object.assign({}, r, { ctx: ctx });
+      });
+    })(),
     toolActivity: TOOLS.val || [],
     agentNames: (Array.isArray(CACHE.agents) ? CACHE.agents : []).reduce((m, a) => { if (a && a.id) m[a.id] = { name: a.identityName || a.name || a.id, emoji: a.identityEmoji || '' }; return m; }, {}),
     agentModels: (Array.isArray(CACHE.agents) ? CACHE.agents : []).reduce((m, a) => { if (a && a.id) m[a.id] = a.model || ''; return m; }, {}),
@@ -724,7 +742,31 @@ function addOpenRouter(out) {
   } catch (e) {}
   return out;
 }
-function addExtras(out) { return addOpenRouter(addQianwen(out)); }
+const CLOUD_ORDER = '/home/j/.openclaw/workspace/state/model-econ/cloud-model-order.json';
+function loadCloudOrder() {
+  try {
+    const j = JSON.parse(fs.readFileSync(CLOUD_ORDER, 'utf8'));
+    const arr = Array.isArray(j && j.exhausted) ? j.exhausted : [];
+    return arr.map(function (x) { return String(x).toLowerCase(); });
+  } catch (e) { return []; }
+}
+function markCloudOrder(list) {
+  try {
+    const ex = loadCloudOrder();
+    if (!ex.length) return list;
+    (list || []).forEach(function (r) {
+      if (!r) return;
+      const p = String(r.provider || '').toLowerCase();
+      const id = String(r.id || r.key || '').toLowerCase();
+      if (ex.some(function (k) { return (p && p.indexOf(k) >= 0) || (id && id.indexOf(k) >= 0); })) {
+        r.status = 'exhausted';
+        r.detail = '额度用尽';
+      }
+    });
+  } catch (e) {}
+  return list;
+}
+function addExtras(out) { return markCloudOrder(addOpenRouter(addQianwen(out))); }
 
 function addQianwen(out) {
   try {
@@ -744,7 +786,8 @@ function addQianwen(out) {
       if (qk && qk.plan_status) parts.push(qk.plan_status);
       if (qk && qk.month_reset_at) parts.push('月重置 ' + String(qk.month_reset_at).slice(5, 10).replace('-', '/'));
       out.push({
-        provider: '千问', model: 'qwen3.8-max / qwen3.8-flash',
+        provider: '千问', model: 'qwen4-max / qwen4-flash',
+        title: '千问 4.0 系列 · 套餐通道',
         currency: 'CNY', unit: pct != null ? '%可用' : '',
         balance: pct,
         status: pct == null ? 'na' : (pct <= 0 ? 'over' : 'ok'),
@@ -1461,10 +1504,10 @@ async function refreshAll() {
   // （实测 3 个/15 秒 ≈ 16GB/小时，vhdx 膨胀元凶）。没人看面板时完全不必跑。
   if (Date.now() - LAST_REQ_AT < 90000) {   // 只在面板确实被访问时才拉 CLI
     await Promise.all([
-      refresh('cron', ['cron', 'list', '--json'], 300000, 30000),
-      refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 300000, 30000),
-      refresh('status', ['status', '--json'], 300000, 30000),
-      refresh('agents', ['agents', 'list', '--json'], 300000, 30000)
+      refresh('cron', ['cron', 'list', '--json'], 900000, 30000),
+      refresh('sess', ['sessions', '--json', '--all-agents', '--limit', '300'], 900000, 30000),
+      refresh('status', ['status', '--json'], 900000, 30000),
+      refresh('agents', ['agents', 'list', '--json'], 900000, 30000)
     ]);
   }
 }
@@ -2275,7 +2318,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: false, forced: true }));
       return;
     }
-    const req = require('http').get({ host: '127.0.0.1', port: 18789, path: '/health', timeout: 3000 }, (r) => {
+    const req = require('http').get({ host: '127.0.0.1', port: 18789, path: '/health', timeout: 8000 }, (r) => {
       let b = ''; r.on('data', (c) => b += c);
       r.on('end', () => {
         let ok = r.statusCode === 200;

@@ -203,9 +203,10 @@ if [ "$ALERT_PENDING" = "1" ]; then
   fi
   # ① 先走独立 webhook（不经网关，最抵故障）
   if send_via_webhook_alert >/dev/null 2>&1; then exit 0; fi
-  # ② webhook 不通 → 主应用直发果果（不再投维护管家）
-  ACC=""
-  [ -z "${NOTIFY_TARGET:-}" ] && TARGET="user:ou_74fec7bc81cc6ec6d2b4de1c0967923b"
+  # 2026-11-22 主公令：告警不准混进主公与果果的私聊。
+  # webhook（果果告警群）不通时改投维护管家通道，绝不回落主公 DM。
+  ACC="maint"
+  [ -z "${NOTIFY_TARGET:-}" ] && TARGET="$MAINT_TARGET"
 else
   ACC="${NOTIFY_ACCOUNT-maint}"
   [ "$NOTIFY_OWNER" = "1" ] && ACC=""

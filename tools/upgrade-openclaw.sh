@@ -79,14 +79,16 @@ say "当前版本 $CUR"
 if [ -n "$PIN" ]; then TGT="$PIN"; say "目标版本 $TGT（指定）"
 else TGT=$(latest); [ -n "$TGT" ] || die "查不到最新版本（npm 不通）"; say "目标版本 $TGT（latest）"; fi
 if [ "$CUR" = "$TGT" ]; then say "已是最新，无需升级"; note uptodate "$CUR"; exit 0; fi
-# 2026-11-17：成熟度闸门 —— 目标版本发布 ≥7 天才允许安装，--force 显式覆盖
-RDAY=$(timeout 40 npm view openclaw time --json 2>/dev/null | python3 -c 'import json,sys,datetime; t=json.load(sys.stdin); s=t.get(sys.argv[1]); print("" if not s else round((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(s.replace("Z","+00:00"))).total_seconds()/86400,2))' "$TGT" 2>/dev/null)
-if [ -n "$RDAY" ]; then
-  say "  目标成熟度 ${RDAY} 天"
-  if python3 -c 'import sys; sys.exit(0 if float(sys.argv[1])>=7 else 1)' "$RDAY"; then :
-  elif [ "$FORCE" = "1" ]; then say "  ⚠ 不足 7 天，--force 覆盖"
-  else die "目标 $TGT 发布仅 ${RDAY} 天（<7 天成熟度门槛）；确要装请加 --force"; fi
-else say "  ⚠ 查不到 $TGT 发布时间，跳过成熟度校验"; fi
+# 2026-11-22 主公令：取消 7 天成熟度门槛（新版本次日 08:00 即升）
+# 需要临时收紧时：UPGRADE_MIN_DAYS=7 bash tools/upgrade-openclaw.sh
+MINDAYS="${UPGRADE_MIN_DAYS:-0}"
+if [ "$MINDAYS" -gt 0 ] 2>/dev/null; then
+  RDAY=$(timeout 40 npm view openclaw time --json 2>/dev/null | python3 -c 'import json,sys,datetime; t=json.load(sys.stdin); s=t.get(sys.argv[1]); print("" if not s else round((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(s.replace("Z","+00:00"))).total_seconds()/86400,1))' "$TGT" 2>/dev/null)
+  if [ -n "$RDAY" ]; then
+    say "  目标成熟度 $RDAY 天（阈值 $MINDAYS）"
+    if [ "$(printf '%.0f' "$RDAY")" -lt "$MINDAYS" ]; then die "目标 $TGT 发布仅 $RDAY 天（< $MINDAYS 天）；确要装请加 --force"; fi
+  else say "  ⚠ 查不到 $TGT 发布时间，跳过成熟度校验"; fi
+else say "  成熟度门槛已取消（2026-11-22 主公令，默认装最新稳定版）"; fi
 
 hr; say "① 预检"
 FREE=$(df -Pm /home/j | tail -1 | awk '{print $4}')

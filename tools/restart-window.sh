@@ -1,7 +1,7 @@
 #!/bin/bash
 # restart-window.sh —— 每日 08:00 统一重启窗口（2026-10-29 主公令；2026-10-31 改为 08:00）
 # 流程：自检 -> 全绿才重启 -> 重启后复检 -> 处理重启队列 -> 飞书报备
-# 用法: bash tools/restart-window.sh [--dry-run]
+# 用法: bash tools/restart-window.sh [--dry-run]   （RW_FORCE=1 绕过今日去重，用于手动补跑）
 set -u
 export PATH=/home/j/.npm-global/bin:/home/j/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 W=/home/j/.openclaw/workspace
@@ -29,7 +29,7 @@ if [ -n "$MAINPID" ] && [ "$MAINPID" != "0" ]; then
   PSTS=$(date -d "$PSTART" +%s 2>/dev/null || echo 0)
   CUTOFF=$(date -d 'today 07:50' +%s)
   HEALTH=$(curl -s -o /dev/null -w '%{http_code}' --max-time 6 http://127.0.0.1:18789/health 2>/dev/null)
-  if [ "$PSTS" -ge "$CUTOFF" ] && [ "$HEALTH" = "200" ]; then
+  if [ "$PSTS" -ge "$CUTOFF" ] && [ "$HEALTH" = "200" ] && [ "${RW_FORCE:-0}" != "1" ]; then
     say "今早已升级/重启（PID $MAINPID 起于 $PSTART，health=$HEALTH）→ 跳过重启（去重）"
     notify "【重启窗口】今早 08:00 后已完成升级重启，本窗口跳过，不再重复重启"
     exit 0
@@ -98,48 +98,8 @@ if [ -n "$BA" ]; then
   [ "$AGEH" -gt 30 ] && say "注意：备份偏旧（>30h），但仍按窗口执行"
 fi
 
-# 2.5) 升级挂载：必须「判定件 + 主公批准件」双件齐全才升级（2026-11-21 主公令）
-ARMF=$W/state/work/.upgrade-armed
-APPR=$W/state/work/.upgrade-approved
-if [ -f "$ARMF" ]; then
-  TGT=$(head -1 "$ARMF" | tr -d '[:space:]')
-  if [ -z "$TGT" ]; then
-    say "挂载文件为空，忽略并删掉"; rm -f "$ARMF"
-  else
-    APPROVED_BY=$(python3 - "$APPR" "$TGT" <<'PY' 2>/dev/null || true
-import json,sys
-try:
-    d=json.load(open(sys.argv[1]))
-except Exception:
-    print(""); raise SystemExit
-print((d.get("approved_by") or "") if d.get("target")==sys.argv[2] else "")
-PY
-)
-    if [ -z "$APPROVED_BY" ]; then
-      say "⚠ 有升级挂载 $TGT，但缺主公批准件 → 本窗口不升级，只做常规重启"
-      notify "【升级拦截】$TGT 未获主公批准，本次窗口不升级"
-      rm -f "$ARMF"
-    else
-      say "主公已批准（$APPROVED_BY）→ 执行升级 $TGT（替代本次重启）"
-      if [ "$DRY" = "1" ]; then
-        say "dry-run：将执行 bash tools/upgrade-openclaw.sh --version=$TGT"; exit 0
-      fi
-      FORCEFLAG=""; [ "$(python3 -c "import json;print(int(bool(json.load(open('$APPR')).get('force'))))" 2>/dev/null || echo 0)" = "1" ] && FORCEFLAG="--force"
-      bash "$W/tools/upgrade-openclaw.sh" --version="$TGT" $FORCEFLAG >> "$LOG" 2>&1
-      URCP=$?
-      if [ "$URCP" = "0" ]; then
-        printf '%s %s\n' "$(date +%F)" "$(timeout 60 openclaw --version 2>/dev/null | tail -1 | awk '{print $2}')" > "$W/state/work/.upgrade-auto-done"
-        rm -f "$ARMF" "$APPR"
-        say "升级分支完成 rc=0"
-      else
-        say "升级失败 rc=$URCP（已尝试自动回滚），保留双件供排查"
-        notify "【升级窗口】升级失败 rc=$URCP，已尝试回滚，详见 state/work/upgrade-ledger.jsonl"
-      fi
-      say "===== 重启窗口结束（升级分支）====="
-      exit 0
-    fi
-  fi
-fi
+# 2.5) 升级已移到重启之后（2026-11-22 主公令）：见 5.6 升级链
+
 
 # 3) 执行重启
 if [ "$DRY" = "1" ]; then say "dry-run：不执行重启"; exit 0; fi
@@ -174,6 +134,38 @@ if [ "$H" != "200" ] || [ "$NEW_PID" = "$OLD_PID" ] || [ -z "$NEW_PID" ] || [ "$
 fi
 POST=$(timeout 240 bash "$W/tools/console-cmd.sh" selfcheck 2>&1 | tail -2 | head -1)
 say "重启后自检：$POST"
+
+# 5.6) 重启后升级链（2026-11-22 主公令：先重启 → 验备份 → 体检 → 升级）
+if [ "$H" = "200" ]; then
+  say "→ 升级链：验备份完整性"
+  if ! timeout 300 bash "$W/tools/backup-integrity.sh" >> "$LOG" 2>&1; then
+    say "备份完整性未通过 → 今日不升级"
+    notify "【升级跳过】备份完整性未通过，今天只重启不升级。详见 state/work/backup-integrity.log"
+  else
+    DEC=$(timeout 180 python3 "$W/tools/upgrade-decide.py" 2>&1 | head -1)
+    say "$DEC"
+    case "$DEC" in
+      *arm*)
+        case "$POST" in
+          *"FAIL 0"*)
+            TGTUP=$(head -1 "$W/state/work/.upgrade-armed" 2>/dev/null | tr -d "[:space:]")
+            say "体检通过（$POST）→ 升级到 $TGTUP"
+            notify "【升级开始】$DEC；体检通过，开始安装并验证"
+            if timeout 2400 bash "$W/tools/upgrade-panel.sh" --target "$TGTUP" >> "$LOG" 2>&1; then
+              say "升级完成 rc=0"
+              notify "【升级完成】已升级到 $TGTUP，13 项自检通过"
+            else
+              say "升级失败（按技能自动回滚）"
+              notify "【升级失败】$TGTUP 安装未通过验收，已自动回滚，详见 state/work/upgrade-panel.log"
+            fi
+            rm -f "$W/state/work/.upgrade-armed" "$W/state/work/.upgrade-approved" ;;
+          *) say "体检未通过（$POST）→ 不升级"
+             notify "【升级拦截】重启后体检未通过（$POST），今天不升级" ;;
+        esac ;;
+      *) say "无需升级：$DEC" ;;
+    esac
+  fi
+fi
 
 # 5) 处理重启队列
 if [ -f "$Q" ]; then

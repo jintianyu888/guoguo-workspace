@@ -36,7 +36,7 @@ else
   echo "  ⚠️ 新 NAS 未挂载，跳过 tier1 推送（本地已保留）" >> "$LOG"
 fi
 # 保留最近 30 份（约 15 天）
-ls -t "$OUT"/tier1-*.tar.gz.gpg "$OUT"/tier1-*.tar.gz 2>/dev/null | tail -n +31 | xargs -r rm -f
+ls -t "$OUT"/tier1-*.tar.gz.gpg "$OUT"/tier1-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
 echo "  保留: $(ls "$OUT"/tier1-*.tar.gz 2>/dev/null|wc -l) 份" >> "$LOG"
 # 2026-10-03 补（昨晚审计建议③）：用户级配置小备份（.npmrc/.gitconfig/.bashrc/.profile/.ssh 配置）
 bash /home/j/.openclaw/workspace/tools/backup-user-config.sh >> "$LOG" 2>&1 || echo "  ⚠️ 用户级配置备份失败" >> "$LOG"

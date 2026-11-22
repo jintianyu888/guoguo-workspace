@@ -61,6 +61,7 @@ if [ "$1" = "create" ]; then
   if [ "$SKIP" = "1" ]; then F="$DUPF"; else F=$(ls -t "$STAGE"/*.tar.gz 2>/dev/null | head -1); fi
   [ -z "$F" ] && { echo "原生盘无归档产物" >> "$LOG"; exit 1; }
   B=$(basename "$F"); S=$(stat -c%s "$F")
+  if [ -f "$DEST/$B" ] && [ "$(stat -c%s "$DEST/$B" 2>/dev/null)" = "$S" ]; then echo "✅ 新 NAS 已有同大小副本，跳过: $B" | tee -a "$LOG"; exit 0; fi
   if [ "${NP_DRY:-0}" = "1" ]; then echo "[dry] 将落盘 X/D 并推 NAS: $B ($S 字节)"; exit 0; fi
   echo "=== $(date '+%F %T') 打包完成 $B ($S 字节)，开始整文件复制到 D ===" >> "$LOG"
 # 2026-11-05 22:35 主公令：第一份落 X 盘（本地最快，恢复读取优先）
@@ -117,12 +118,38 @@ fi
 fi
 if [ "$1" = "push" ]; then
   F=${2:-$(ls -t "$OUT"/*.tar.gz 2>/dev/null | head -1)}
-  [ -z "$F" ] && { echo "无归档可推送"; exit 1; }
+  [ -z "$F" ] && { echo "无归档可推送" >> "$LOG"; exit 1; }
+  [ -f "$F" ] || { echo "❌ 源归档不存在: $F" >> "$LOG"; exit 1; }
   B=$(basename "$F"); S=$(stat -c%s "$F")
-  nas_guard "$DEST" || { echo "❌ 新 NAS 未挂载，拒绝推送"; exit 1; }
+  if [ -f "$DEST/$B" ] && [ "$(stat -c%s "$DEST/$B" 2>/dev/null)" = "$S" ]; then echo "✅ 新 NAS 已有同大小副本，跳过: $B" | tee -a "$LOG"; exit 0; fi
+  nas_guard "$DEST" || { echo "❌ 新 NAS 未挂载，拒绝推送" >> "$LOG"; exit 1; }
   AV=$(df -Pk "$DEST" | awk 'NR==2{print $4*1024}')
-  if [ "${AV:-0}" -lt "$S" ]; then echo "❌ 新 NAS 空间不足：剩余 ${AV:-0} 字节，需要 $S 字节"; exit 1; fi
-  cp -f "$F" "$DEST/$B.part" && mv -f "$DEST/$B.part" "$DEST/$B"
-  R=$(stat -c%s "$DEST/$B" 2>/dev/null)
-  if [ "$S" = "$R" ]; then echo "✅ 归档已推送到新 NAS: $B"; else echo "❌ 大小不符 本地=$S 目标=${R:-0}"; fi
+  if [ "${AV:-0}" -lt "$S" ]; then echo "❌ 新 NAS 空间不足：剩余 ${AV:-0} 字节，需要 $S 字节" >> "$LOG"; exit 1; fi
+  ok=0; R=0
+  if [ "${NP_FORCE_SSH:-0}" != "1" ]; then
+    rm -f "$DEST/$B.part"
+    if cp -f "$F" "$DEST/$B.part" && mv -f "$DEST/$B.part" "$DEST/$B"; then
+      R=$(stat -c%s "$DEST/$B" 2>/dev/null)
+      [ "$S" = "$R" ] && ok=1
+    fi
+    [ "$ok" = "1" ] || rm -f "$DEST/$B.part" 2>/dev/null
+  fi
+  if [ "$ok" != "1" ]; then
+    echo "⚠️ $(date '+%F %T') CIFS 推送失败/跳过（本地=$S），改用 SSH/cat: $B" >> "$LOG"
+    RD="${NAS_SSH_ARCHIVES:-/volume1/homes/guoguonas/archive/jinyu/openclaw-archives}"
+    if timeout 7200 ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 nas "cat > '$RD/$B.part'" < "$F"; then
+      R=$(timeout 60 ssh -o BatchMode=yes nas "stat -c%s '$RD/$B.part'" 2>/dev/null | tr -d '
+')
+      if [ "$S" = "$R" ]; then
+        timeout 60 ssh -o BatchMode=yes nas "mv -f '$RD/$B.part' '$RD/$B'" && ok=1
+      fi
+    fi
+    [ "$ok" = "1" ] || timeout 30 ssh -o BatchMode=yes nas "rm -f '$RD/$B.part'" 2>/dev/null || true
+  fi
+  if [ "$ok" = "1" ]; then
+    echo "✅ 归档已推送到新 NAS: $B ($S 字节)" | tee -a "$LOG"
+    exit 0
+  fi
+  echo "❌ 归档推送失败（CIFS 与 SSH 均失败）: $B 本地=$S 目标=${R:-0}" | tee -a "$LOG" >&2
+  exit 1
 fi

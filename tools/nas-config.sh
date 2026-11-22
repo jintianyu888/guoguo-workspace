@@ -12,6 +12,7 @@
 NAS_MOUNT=/mnt/nas
 NAS_ROOT=$NAS_MOUNT/archive/jinyu
 NAS_ARCHIVES=$NAS_ROOT/openclaw-archives
+NAS_SSH_ARCHIVES=/volume1/homes/guoguonas/archive/jinyu/openclaw-archives
 NAS_TIER1=$NAS_ROOT/migrated-20261102/openclaw-backups-tier1
 NAS_TIER2=$NAS_ROOT/migrated-20261102/openclaw-backups-tier2
 NAS_REPOS=$NAS_ROOT/migrated-20261102/openclaw-repos

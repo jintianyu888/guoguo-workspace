@@ -125,15 +125,21 @@ def overlaps():
         rows.append((mm, mm + d, name or '', d))
     rows.sort()
     print("== 时段重叠（前一个还没跑完，后一个就开始了）")
-    n = 0
+    n = 0; ex = 0
     for i in range(len(rows)):
         s1, e1, n1, d1 = rows[i]
         for j in range(i + 1, len(rows)):
             s2, e2, n2, d2 = rows[j]
             if s2 >= e1: break
+            # EXEMPT：备份/归档/镜像类长任务与同一时段内的任务属设计内重叠
+            # （备份期间由 backup-quiet 暂停其余任务，不算冲突）
+            BK=("备份","归档","镜像","tier1","tier2")
+            if (any(k in n1 for k in BK) and s2 < 7*60) or (any(k in n2 for k in BK) and s1 < 7*60):
+                ex += 1
+                continue
             n += 1
             print("  %02d:%02d-%02d:%02d %-26s ↔ %02d:%02d %s" % (s1//60, s1%60, int(e1)//60, int(e1)%60, n1[:24], s2//60, s2%60, n2[:24]))
-    print("  合计 %d 处重叠" % n)
+    print("  合计 %d 处重叠（已豁免备份/归档类设计内重叠 %d 处）" % (n, ex))
 
 cmd = sys.argv[1] if len(sys.argv) > 1 else 'report'
 if cmd == 'overlaps':

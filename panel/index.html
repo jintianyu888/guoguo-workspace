@@ -814,6 +814,23 @@ header{display:flex;gap:12px}
 #ablist .row .meta{font-size:11.5px!important;color:var(--dim)}
 #ablist .row .pill{font-size:11.5px!important;padding:2px 8px}
 #ablist .row .aline{font-size:12.5px!important;color:var(--dim);line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* v4.6.42 上下文占用：放「队列 · 最近活动」行右侧，绝对阈值 120k/150k 变色，取不到显示 — */
+  #ablist .row .aline.ctxline{display:flex;align-items:baseline;gap:10px;overflow:visible}
+  #ablist .row .aline .atext{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #ablist .row .aline .ctx{flex:0 0 auto;font-size:13.5px;color:var(--dim);white-space:nowrap}
+  #ablist .row .aline .ctx .den{font-size:11.5px;opacity:.72}
+  #ablist .row .aline .ctx.warn{color:#ffd24a}   /* v4.6.42 沿用状态条小黄；本皮 --yellow 是蓝，不能当警示色 */
+  #ablist .row .aline .ctx.bad{color:#ff5b5b}   /* v4.6.42 沿用状态条告警红；本皮 --red 是蓝，不能当警示色 */
+  /* v4.6.42 /new 按钮：仅黄/红档显示，只复制不代发 */
+  #ablist .row .aline .newbtn{flex:0 0 auto;font:inherit;font-size:11.5px;line-height:16px;padding:0 7px;border-radius:9px;border:1px solid rgba(123,190,239,.45);background:rgba(41,149,229,.08);color:var(--dim);cursor:pointer;white-space:nowrap}
+  #ablist .row .aline .newbtn:hover{background:rgba(41,149,229,.18);color:var(--txt)}
+  #ablist .row .aline .newbtn.hot{border-color:rgba(255,91,91,.55);color:#ff5b5b;background:rgba(255,91,91,.08)}
+  #abtoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;background:var(--panel);border:1px solid rgba(123,190,239,.45);border-radius:10px;padding:8px 14px;font-size:13.5px;color:var(--txt);z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  #abtoast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  #abfallback{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:99999;background:var(--panel);border:1px solid rgba(123,190,239,.45);border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  #abfallback .t{font-size:12.5px;color:var(--dim)}
+  #abfallback input{font:inherit;font-size:13.5px;background:rgba(41,149,229,.10);border:1px solid rgba(123,190,239,.45);border-radius:8px;color:var(--txt);padding:4px 8px;width:90px}
+  #abfallback button{font:inherit;font-size:12px;background:transparent;border:1px solid rgba(123,190,239,.45);border-radius:8px;color:var(--dim);padding:3px 9px;cursor:pointer}
   .aline.tokline{font-size:11.5px;color:#2191e4;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #ablist .srow{font-size:12.5px;color:var(--dim);display:flex;gap:6px;align-items:center;padding:2px 0 2px 16px;overflow:hidden}
 #ablist .srow .sn{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2188,9 +2205,17 @@ function renderBalances(){
     over:     { dot:'err', pill:'err',  text:'欠费' },
     snapshot: { dot:'y',   pill:'idle', text:'快照' },
     stale:    { dot:'y',   pill:'err',  text:'快照已过期' },
+    exhausted:{ dot:'y',   pill:'err',  text:'额度用尽' },
     na:       { dot:'idle',pill:'idle', text:'不可查' },
     error:    { dot:'err', pill:'err',  text:'失败' }
   };
+  var TIER = { ok:0, snapshot:0, stale:0, na:1, exhausted:2, expired:2, error:2 };
+  list = list.map(function(b,i){ return { b:b, i:i }; }).sort(function(x,y){
+    var tx = (TIER[x.b && x.b.status] != null) ? TIER[x.b.status] : 0;
+    var ty = (TIER[y.b && y.b.status] != null) ? TIER[y.b.status] : 0;
+    if (tx !== ty) return tx - ty;
+    return x.i - y.i;
+  }).map(function(o){ return o.b; });
   el.innerHTML = list.map(function(b){
     var m = META[b.status] || META.na;
     var capMs = b.capturedAt ? Date.parse(b.capturedAt) : NaN;
@@ -2212,7 +2237,7 @@ function renderBalances(){
       numTxt = '—';
     }
     val = '<span class="bv">' + numTxt + '</span>' + '<span class="bc">' + (unitTxt || '') + '</span>';
-    return '<div class="balrow"' + (b.title ? ' title="' + esc(b.title) + '"' : '') + '>' +
+    return '<div class="balrow"' + (b.status === 'exhausted' ? ' style="opacity:.55"' : '') + (b.title ? ' title="' + esc(b.title) + '"' : '') + '>' +
       '<span class="b-dot ' + m.dot + '"></span>' +
       ratePill(b.provider) +
       '<span class="bn">' + b.provider + '</span>' +
@@ -3010,6 +3035,46 @@ function fmtTok(n){
   if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k';
   return String(Math.round(n));
 }
+/* v4.6.42 /new 复制：只写剪贴板，不发任何网络请求、不调 sessions.reset */
+function abToast(msg){
+  var t = document.getElementById('abtoast');
+  if(!t){ t = document.createElement('div'); t.id='abtoast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(abToast._t); abToast._t = setTimeout(function(){ t.classList.remove('on'); }, 2000);
+}
+function abFallbackNew(){
+  var box = document.getElementById('abfallback');
+  if(!box){
+    box = document.createElement('div'); box.id='abfallback';
+    box.innerHTML = '<div class="t">复制失败，请手动复制：</div><input readonly value="/new"><button type="button" class="x">关闭</button>';
+    document.body.appendChild(box);
+    box.querySelector('.x').addEventListener('click', function(){ box.remove(); });
+  }
+  var inp = box.querySelector('input'); inp.focus(); inp.select();
+}
+function abCopyNew(name){
+  var ok = function(){ abToast('已复制 /new — 去「' + name + '」的对话里粘贴'); };
+  var bad = function(){ abFallbackNew(); };
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText('/new').then(ok, bad);
+    } else { bad(); }
+  } catch(e) { bad(); }
+}
+(function(){
+  function bind(){
+    var el = document.getElementById('ablist');
+    if(!el || el.__newBtnBound) return;
+    el.__newBtnBound = true;
+    el.addEventListener('click', function(ev){
+      var t = ev.target; var b = (t && t.closest) ? t.closest('button.newbtn') : null;
+      if(!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      abCopyNew(b.getAttribute('data-name') || '');
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+})();
 function renderAB(){
   var el = document.getElementById('ablist'); if(!el) return;
   var all = (STATE && STATE.agentReply) || [];
@@ -3036,11 +3101,29 @@ function renderAB(){
     var _at = (STATE.agentTokens || {})[r.agent] || {};
     var _a1 = _at.h1 || [0, 0], _a6 = _at.h6 || [0, 0], _a12 = _at.h12 || [0, 0], _a24 = _at.h24 || [0, 0];
     var _tok = '1h ' + fmtTok(_a1[0] + _a1[1]) + ' · 6h ' + fmtTok(_a6[0] + _a6[1]) + ' · 12h ' + fmtTok(_a12[0] + _a12[1]) + ' · 24h ' + fmtTok(_a24[0] + _a24[1]);
+    /* v4.6.42 上下文占用（绝对阈值 120k/150k；取不到显示 —，不拿累计 token 顶替） */
+    var _ctxHtml = '<span class="ctx" title="上下文占用取不到：session 字段缺失或非实时">—</span>';
+    var _newBtn = '';   /* v4.6.42 仅黄/红档才出 /new 按钮；只复制，不代发 */
+    try {
+      var _c = r.ctx;
+      if (_c && typeof _c.used === 'number' && typeof _c.window === 'number' && _c.window > 0) {
+        var _wk = function(n){ return Math.round(n / 1000) + 'k'; };   /* v4.6.42 分母固定压缩线 150k；窗口只进 hover */
+        var _cls = _c.used >= 150000 ? ' bad' : (_c.used >= 120000 ? ' warn' : '');
+        var _pct = Math.round(_c.used / _c.window * 100);
+        var _agoSec = _c.at ? Math.max(0, Math.round((Date.now() - _c.at) / 1000)) : null;
+        var _agoTxt = _agoSec === null ? '时间未知' : (_agoSec < 120 ? _agoSec + ' 秒前' : ago(Date.now() - _agoSec * 1000));
+        var _tip = '上下文 ' + fmtTok(_c.used) + ' · 压缩线 150k · 窗口 ' + _wk(_c.window) + '（' + _pct + '%）· 更新于 ' + _agoTxt + ' · 会话 ' + (r.key || '—');
+        _ctxHtml = '<span class="ctx' + _cls + '" title="' + esc(_tip) + '">' + esc(fmtTok(_c.used)) + '<span class="den"> / 150k</span></span>';
+        if (_c.used >= 120000) {
+          _newBtn = '<button type="button" class="newbtn' + (_c.used >= 150000 ? ' hot' : '') + '" data-name="' + esc(label) + '" title="复制 /new；到该管家的对话里发送即可新开一轮（本面板不代发）">/new</button>';
+        }
+      }
+    } catch (e) {}
     var _tokTitle = '入/出 token：1h ' + fmtTok(_a1[0]) + '/' + fmtTok(_a1[1]) + ' · 6h ' + fmtTok(_a6[0]) + '/' + fmtTok(_a6[1]) + ' · 12h ' + fmtTok(_a12[0]) + '/' + fmtTok(_a12[1]) + ' · 24h ' + fmtTok(_a24[0]) + '/' + fmtTok(_a24[1]);
     out.push('<div class="row"><div class="top"><div class="nm">' + esc(label) + '</div>' +
       '<span class="tok" title="' + esc(_tokTitle) + '">' + esc(_tok) + '</span>' +
       '<span class="meta">' + esc(r.model || '—') + '</span>' + pill + '</div>' +
-      '<div class="aline" title="' + esc(line) + '">' + esc(line) + '</div></div>');
+      '<div class="aline ctxline" title="' + esc(line) + '"><span class="atext">' + esc(line) + '</span>' + _ctxHtml + _newBtn + '</div></div>');
     var kids = subs.filter(function(k){ return k.agent === r.agent; });
     kids.sort(function(a,b){
       var pa = (a.parent === r.key) ? 0 : 1, pb = (b.parent === r.key) ? 0 : 1;
@@ -3108,7 +3191,7 @@ function renderModelSubs(){
     if(!pref) return;
     var subs=Object.keys(ms).filter(function(m){ return m.toLowerCase().indexOf(pref)===0 || (pref==='glm'&&m.toLowerCase().indexOf('zai/')===0) || (pref==='zai/'&&m.toLowerCase().indexOf('glm')>=0) || (pref==='kimi'&&m.toLowerCase().indexOf('k3')>=0); });
     if (pref !== 'openrouter' && pref !== 'zai/') subs = subs.filter(function(m){ return m.indexOf('/') < 0; });
-    var KNOWN = { 'DeepSeek': ['deepseek-flash','deepseek-v4-pro'], '智谱': ['glm-5.3'], 'Kimi': ['kimi-for-coding','k3-256k'], 'MiniMax': [], '千问': ['qwen3.8-max','qwen3.7-max','qwen3.7-plus','qwen3.8-flash'] };
+    var KNOWN = { 'DeepSeek': ['deepseek-flash','deepseek-v4-pro'], '智谱': ['glm-5.3'], 'Kimi': ['kimi-for-coding','k3-256k'], 'MiniMax': [], '千问': ['qwen4-max','qwen4-flash'] };
     KNOWN[prov] = KNOWN[prov] || [];
     KNOWN[prov].forEach(function(km){
       if (subs.indexOf(km) < 0) subs.push(km);
@@ -3116,7 +3199,7 @@ function renderModelSubs(){
     provModels(prov).forEach(function(km){
       if (subs.indexOf(km) < 0) subs.push(km);
     });
-    if (prov.indexOf('千问') >= 0) subs = subs.filter(function(m){ return /^qwen3[.][78]-/.test(m) || m === 'auto'; });
+    if (prov.indexOf('千问') >= 0) subs = subs.filter(function(m){ return /^qwen4-/.test(m) || m === 'auto'; });
     var PML = provModels(prov);
     subs = subs.filter(function(m){ return ms[m] || (KNOWN[prov]||[]).indexOf(m) >= 0 || PML.indexOf(m) >= 0; });
     if(!subs.length) return;
@@ -4876,8 +4959,8 @@ function segBadge(){
   function pollGw(){
     fetch('/api/gw',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
       if(d && d.ok){ gwDown=0; if(window.__GWDOWN){ window.__GWDOWN=0; window.__SEGTXT=window.__ACTSEG||''; segCompose(); pollIdle(); } if(gwEl) gwEl.style.display='none'; return; }
-      gwDown++; if(gwDown>=2) renderGw();
-    }).catch(function(){ gwDown++; if(gwDown>=2) renderGw(); });
+      gwDown++; if(gwDown>=3) renderGw();
+    }).catch(function(){ gwDown++; if(gwDown>=3) renderGw(); });
   }
 
   pollAct(); setTimeout(pollAct,1200); setInterval(pollAct,15000);

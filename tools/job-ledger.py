@@ -100,6 +100,15 @@ def sync():
     print("同步完成：任务 %d 条，新增运行记录 %d 条" % (n_jobs, n_runs))
 
 
+    # 2026-11-22：收尾孤儿记录（进程被重启/静默窗打断时，起过但永远收不了尾）
+    try:
+        import time as _t
+        cutoff=_t.strftime("%Y-%m-%d %H:%M:%S", _t.localtime(_t.time()-7200))
+        cur=c.execute("update runs set status='orphaned', error=coalesce(nullif(error,''),'未收尾：进程被中断，无结束记录') where status='running' and started < ?", (cutoff,))
+        if cur.rowcount: print("孤儿收尾: %d 条"%cur.rowcount)
+    except Exception as e:
+        print("孤儿收尾失败:", e)
+
 def classify(status, err):
     e = (err or "").lower()
     if status == "ok":
@@ -163,15 +172,27 @@ def missed(hours=24, quiet=False):
     grace = 2 * 3600
     rows = c.execute("SELECT job_id,name,schedule FROM jobs WHERE enabled=1").fetchall()
     out = []
+    ack=set()
+    ap=os.path.join(WS,"state/work/job-miss-ack.jsonl")
+    if os.path.exists(ap):
+        for ln in open(ap,encoding="utf-8",errors="ignore"):
+            ln=ln.strip()
+            if not ln: continue
+            try: a=json.loads(ln)
+            except Exception: continue
+            ack.add((a.get("name",""), a.get("slot","")))
     for jid, nm, sch in rows:
         slot = prev_slot(sch, now - grace)
         if not slot:
             continue
         slot_s = time.strftime("%F %T", time.localtime(slot))
         cnt = c.execute("SELECT count(*) FROM runs WHERE job_id=? AND started>=?",
-                        (jid, time.strftime("%F %T", time.localtime(slot - 300)))).fetchone()[0]
+                        (jid, time.strftime("%F %T", time.localtime(slot - 5400)))).fetchone()[0]
         if cnt == 0:
-            out.append((nm, time.strftime("%m-%d %H:%M", time.localtime(slot))))
+            slot_lbl = time.strftime("%m-%d %H:%M", time.localtime(slot))
+            if (nm, slot_lbl) in ack:
+                continue
+            out.append((nm, slot_lbl))
     if quiet:
         return out
     if out:

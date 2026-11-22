@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# exp.py - 先查后做：在成功经验索引/账本/技能/文档里找现成做法
+# exp.py - 先查后做：在技能库索引（技能+经验条目）/账本/文档里找现成做法
 # 用法: python3 tools/exp.py 关键词 [--n 8] [--full]
 import json, sys, pathlib, re
 
@@ -61,7 +61,7 @@ def main():
         if it.get('rollback'):
             print('    回滚：' + (it['rollback'] if full else it['rollback'][:120]))
         print('    来源：' + it.get('source', ''))
-    print('\n完整索引：docs/成功经验索引-*.md ；原始账本：state/log/worklog.jsonl')
+    print('\n完整索引：docs/技能库索引-*.md ；原始账本：state/log/worklog.jsonl')
     return 0
 
 if __name__ == '__main__':

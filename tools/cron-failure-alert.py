@@ -161,7 +161,12 @@ def collect(jobs, now_ms):
             out.append(("delivery", jid, name, "投递失败｜%s" % (err_detail or str(st.get("lastDeliveryStatus"))), 0))
 
         nxt = st.get("nextRunAtMs")
-        if isinstance(nxt, (int, float)) and nxt > 0 and now_ms > nxt + OVERDUE * 1000:
+        # 2026-11-22 误报（互审定稿-model 13:35 明明跑了 ok，14:00 却报「已过 25 分钟未运行」）：
+        # 改期后 nextRunAtMs 是旧值没往前推，而 lastRunAtMs 已经等于 nxt。判据：最近一次运行
+        # 发生在这个计划点前后 2 分钟内，就算已运行，不报 overdue。
+        _lrat = st.get("lastRunAtMs")
+        _ran_near = isinstance(_lrat, (int, float)) and isinstance(nxt, (int, float)) and _lrat >= nxt - 120000
+        if isinstance(nxt, (int, float)) and nxt > 0 and not _ran_near and now_ms > nxt + OVERDUE * 1000:
             late = int((now_ms - nxt) / 60000)
             payload = j.get("payload") if isinstance(j.get("payload"), dict) else {}
             long_job = _as_int(payload.get("timeoutSeconds")) >= 1800 or _as_int(payload.get("noOutputTimeoutSeconds")) >= 1800
@@ -250,7 +255,10 @@ def notify(text):
         except Exception as e:
             log("补报失败: %r" % (e,))
     try:
-        p = subprocess.run(["bash", NOTIFY, "--alert", text], capture_output=True, text=True, timeout=90)
+        # 2026-11-22 15:05 主公令：定时任务失败属 P1，不再逐条推 DM，进 21:00 汇总队列；
+        # 真正 P0（磁盘满/网关挂/数据风险）走 health-alert 的 --p0 通道，与本脚本无关。
+        _tier = "--alert" if os.environ.get("CFA_FORCE_ALERT") == "1" else "--digest"
+        p = subprocess.run(["bash", NOTIFY, _tier, text], capture_output=True, text=True, timeout=90)
         return p.returncode == 0
     except Exception as e:
         log("notify 异常: %r" % (e,))

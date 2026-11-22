@@ -43,7 +43,14 @@ if nas_guard "$NAS_TIER2"; then
 else
   echo "  ⚠️ 新 NAS 未挂载，跳过 tier2 推送（本地已保留）" >> "$LOG"
 fi
-mkdir -p /mnt/h/openclaw-backups/tier2 && cp -f "$OUT/tier2-$TS.tar.gz" /mnt/h/openclaw-backups/tier2/ 2>/dev/null && echo "  ✅ 已镜像 H" >> "$LOG" || echo "  ⚠️ H 镜像失败（cp rc=$?），需人工核对" >> "$LOG"
-# 保留 8 份（约 2 个月）
-ls -t "$OUT"/tier2-*.tar.gz 2>/dev/null | tail -n +9 | xargs -r rm -f
+mkdir -p /mnt/h/openclaw-backups/tier2
+# 2026-11-22 改为后台 systemd + rsync（9p 上 cp 37G 必挂，rc=1）
+if systemd-run --user --collect --no-block --unit="tier2-e2h-$(date +%Y%m%d-%H%M)" \
+    nice -n 10 ionice -c2 -n7 rsync -a --partial --inplace "$OUT/tier2-$TS.tar.gz" /mnt/h/openclaw-backups/tier2/ >/dev/null 2>&1; then
+  echo "  ✅ H 镜像已交后台单元" >> "$LOG"
+else
+  echo "  ⚠️ H 镜像后台单元启动失败" >> "$LOG"
+fi
+# 保留 4 份（2026-11-22：E 盘瘦身，约 1 个月）
+ls -t "$OUT"/tier2-*.tar.gz 2>/dev/null | tail -n +5 | xargs -r rm -f
 echo "  保留: $(ls "$OUT"/tier2-*.tar.gz 2>/dev/null|wc -l) 份" >> "$LOG"

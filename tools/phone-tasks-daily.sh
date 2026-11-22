@@ -39,6 +39,8 @@ echo "$(date -Is) now=$now target=$target done=$done" >> "$LOG"
 if [ "$done" = "True" ]; then exit 0; fi
 if [ "$now" \< "$target" ]; then exit 0; fi
 
+# 2026-11-22 主公令：淘金币冻结，标记文件存在即跳过
+if [ -f "$WS/state/phone/taobao-frozen" ]; then echo "$(date -Is) FROZEN skip" >> "$LOG"; exit 0; fi
 echo "$(date -Is) RUN start" >> "$LOG"
 bash "$SCRIPTS/kola-onetap.sh" >> "$LOG" 2>&1
 rc=$?

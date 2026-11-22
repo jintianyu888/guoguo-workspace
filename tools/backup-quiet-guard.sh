@@ -43,4 +43,11 @@ if [ "$AGE" -gt 180 ]; then
   bash "$WS/tools/notify.sh" "⚠️ 备份静默已持续 ${AGE} 分钟，已自动恢复全部定时任务（备份可能异常退出）" >> "$LOG" 2>&1 || true
   echo "[$(date '+%F %T')] 超时 ${AGE} 分钟，已自动恢复" >> "$LOG"
 fi
+# 路径3：累计静默超 360 分钟（state.json 每轮备份会被重写，180 分钟判定可能被重置）
+OLD=$(python3 "$WS/tools/quiet-oldest.py" 2>/dev/null || echo 0)
+if [ "$OLD" -gt 360 ]; then
+  python3 "$WS/tools/backup-quiet.py" resume >> "$LOG" 2>&1 || true
+  bash "$WS/tools/notify.sh" "⚠️ 定时任务已静默 $OLD 分钟（>6h），已强制恢复；检查备份链是否卡住" >> "$LOG" 2>&1 || true
+  echo "[$(date '+%F %T')] 路径3 累计静默 $OLD 分钟，已强制恢复" >> "$LOG"
+fi
 exit 0

@@ -6,7 +6,7 @@ import json, os, re, sys, datetime, pathlib
 WS = pathlib.Path('/home/j/.openclaw/workspace')
 SKILLS = pathlib.Path('/home/j/.openclaw/shared-skills')
 WIN_DIRS = ['/mnt/e/openclaw-tools', '/mnt/e/openclaw-store/desktop-tools', '/mnt/c/Users/J/Desktop']
-OUT_MD = WS / 'docs' / ('成功经验索引-%s.md' % datetime.date.today().strftime('%Y%m%d'))
+OUT_MD = WS / 'docs' / ('技能库索引-%s.md' % datetime.date.today().strftime('%Y%m%d'))
 OUT_JSON = WS / 'state' / 'ledger' / 'exp-index.json'
 
 RULES = [
@@ -141,7 +141,7 @@ def main():
             groups.setdefault(r['domain'], []).append(r)
 
     order = [n for n, _ in RULES] + ['其他']
-    lines = ['# 成功经验索引（%s）' % datetime.date.today(), '',
+    lines = ['# 技能库索引（技能 + 经验条目）%s' % datetime.date.today(), '',
              '> 由 tools/exp-index.py 自动生成，勿手改；新增经验请写进统一账本或经验库后重跑。',
              '> 先查这里再动手：python3 tools/exp.py 关键词', '',
              '来源统计：' + '，'.join('%s %d' % (k, v) for k, v in stats.items()), '']

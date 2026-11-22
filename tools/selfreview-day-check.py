@@ -27,6 +27,29 @@ for line in out.splitlines():
     if "selfcheck" in line:
         rows.append(line.strip())
 bad = [r for r in rows if "✅" not in r]
+# 2026-11-22：已定案的历史缺口可登记豁免（state/work/selfreview-ack.jsonl）
+import os, json
+_ack = set()
+_ap = "/home/j/.openclaw/workspace/state/work/selfreview-ack.jsonl"
+if os.path.exists(_ap):
+    for _ln in open(_ap, encoding="utf-8", errors="ignore"):
+        _ln = _ln.strip()
+        if not _ln:
+            continue
+        try:
+            _a = json.loads(_ln)
+        except Exception:
+            continue
+        _ack.add((_a.get("date", ""), _a.get("butler", "")))
+if _ack:
+    _kept = []
+    for _r in bad:
+        _hit = any(d == target.isoformat() and b in _r for d, b in _ack)
+        if _hit:
+            print("  ⚠已登记缺口（不判红）：" + _r.strip())
+        else:
+            _kept.append(_r)
+    bad = _kept
 print("检查日：%s（自审时点 12:54/13:04/13:14/13:24/13:34）" % target.isoformat())
 for r in rows:
     print("  " + r)

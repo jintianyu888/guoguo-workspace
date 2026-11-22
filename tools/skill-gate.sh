@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # skill-gate.sh —— 开工先查技能（2026-11-21 主公令·所有管家硬性）
 # 用法：bash tools/skill-gate.sh "<任务关键词>" [--agent <id>]
-# 作用：一次搜三处（共享技能 / 成功经验索引 / tools 脚本），打印命中，并落回执到 state/skills/lookups/
+# 作用：一次搜三处（共享技能 / 经验条目 / tools 脚本），打印命中，并落回执到 state/skills/lookups/
 set -u
 W=/home/j/.openclaw/workspace
 KW="${1:-}"; AG="${SKILL_GATE_AGENT:-${OPENCLAW_AGENT_ID:-unknown}}"
@@ -16,7 +16,7 @@ echo "-- 1) 共享技能（~/ .openclaw/shared-skills）"
 SH=$(ls -1 /home/j/.openclaw/shared-skills 2>/dev/null | grep -i -- "$KW" | head -6)
 if [ -n "$SH" ]; then echo "$SH" | sed "s/^/   ✅ /"; else echo "   （无同名技能，试看描述命中）"; grep -ril --include=SKILL.md -- "$KW" /home/j/.openclaw/shared-skills 2>/dev/null | head -4 | sed "s#/home/j/.openclaw/shared-skills/##;s#/SKILL.md##;s/^/   ~ /"; fi
 
-echo "-- 2) 成功经验索引（tools/exp.py）"
+echo "-- 2) 技能库·经验条目（tools/exp.py）"
 EXP=$(timeout 60 python3 "$W/tools/exp.py" "$KW" 2>/dev/null | head -12)
 printf "%s\n" "$EXP" | sed -n "1,8p" | sed "s/^/   /"
 

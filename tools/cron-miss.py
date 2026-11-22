@@ -4,6 +4,9 @@
 判据：按 cron 表达式回推最近一次应触发时刻；若该时刻已过 10 分钟，
 而 state.lastRunAtMs 仍早于它 5 分钟以上，判为漏跑。
 
+重激活豁免（2026-11-22 加）：state.scheduleActivatedAtMs 晚于本次应触发时刻的，
+该档位一律不算漏跑（排程被停用后再启用，档位本就不该跑）。
+
 改档豁免（2026-11-21 加）：排程表达式换过后，新档位的「下一次应触发」之前
 一律不算漏跑（旧档位本就不该在新时刻跑）。指纹存 state/work/cron-sched.json，
 字段 {id: {"expr": "...", "grace_until": "YYYY-MM-DD HH:MM"}}。
@@ -114,6 +117,7 @@ def main():
     SCHED0 = json.loads(json.dumps(SCHED))
     misses = []
     rescheduled = []
+    reactivated = []
     for j in jobs:
         if not j.get('enabled', True):
             continue
@@ -128,6 +132,13 @@ def main():
             continue
         if (now - lf) < timedelta(minutes=10):
             continue
+        act_ms = (j.get('state') or {}).get('scheduleActivatedAtMs')
+        if act_ms:
+            act = datetime.fromtimestamp(act_ms / 1000)
+            if lf < act and (now - act) < timedelta(hours=48):
+                reactivated.append({'name': j.get('name'), 'expected': lf.strftime('%m-%d %H:%M'),
+                                    'activated': act.strftime('%Y-%m-%d %H:%M')})
+                continue
         jid = j.get('id')
         rec = SCHED.get(jid)
         grace = None
@@ -161,6 +172,13 @@ def main():
     if rescheduled:
         sys.stderr.write('改档豁免 %d 个（新档位未到前不计漏跑）: %s\n' % (
             len(rescheduled), ', '.join('%s %s->%s' % (r['name'], r['old'], r['new']) for r in rescheduled)))
+    if reactivated:
+        sys.stderr.write('重激活豁免 %d 个（激活前档位不计漏跑）: %s\n' % (len(reactivated), ', '.join('%s %s' % (r['name'], r['expected']) for r in reactivated)))
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'state', 'work', 'cron-miss-exempt.jsonl'), 'a') as fh:
+                fh.write(json.dumps({'ts': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'exempt': reactivated}, ensure_ascii=False) + '\n')
+        except Exception:
+            pass
     misses.sort(key=lambda x: x['expected'])
     if a.json:
         print(json.dumps(misses, ensure_ascii=False, indent=1))
