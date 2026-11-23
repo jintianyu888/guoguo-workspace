@@ -105,6 +105,7 @@ def sync():
         import time as _t
         cutoff=_t.strftime("%Y-%m-%d %H:%M:%S", _t.localtime(_t.time()-7200))
         cur=c.execute("update runs set status='orphaned', error=coalesce(nullif(error,''),'未收尾：进程被中断，无结束记录') where status='running' and started < ?", (cutoff,))
+        c.commit()
         if cur.rowcount: print("孤儿收尾: %d 条"%cur.rowcount)
     except Exception as e:
         print("孤儿收尾失败:", e)

@@ -9,6 +9,8 @@ MP=/mnt/b
 umask 077
 printf 'username=%s\npassword=%s\n' "$B_SMB_USER" "$B_SMB_PASS" > "$CRED"
 chmod 600 "$CRED"
+# 2026-11-23 修：root 运行会把凭据文件建成 root:root，备份(j 用户)读不了 → 打包 EACCES 三连败；写完归还 j 属主
+chown j:j "$CRED" 2>/dev/null || true
 mkdir -p "$MP"
 if mountpoint -q "$MP"; then echo "已挂载"; mount | grep " $MP "; exit 0; fi
 if ! mount -t cifs "//$B_SMB_HOST/$B_SMB_SHARE" "$MP" -o "credentials=$CRED,uid=1000,gid=1000,iocharset=utf8,vers=3.0,nofail,noserverino,_netdev" 2>/tmp/b-link-root.err; then
