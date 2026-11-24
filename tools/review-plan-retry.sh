@@ -16,13 +16,13 @@ run() {
   echo "$name rc=$rc bytes=$(wc -c < "$OUT/$name.md" 2>/dev/null)" >> "$OUT/status.txt"
 }
 : > "$OUT/status.txt"
-run v4pro deepseek/deepseek-v4-pro
-run minimax minimax/MiniMax-M3.1-Flash-Preview
-run kimi kimi-coding/kimi-k3.1-pro
+run dsflash deepseek/deepseek-flash
+run glm zai/glm-5.4
+run glmflash zai/glm-5.3-flash
 {
   echo "【双审补跑结果】$(date '+%m-%d %H:%M')"
   echo "$(cat "$OUT/status.txt" | tr '\n' ' ')"
-  for f in v4pro minimax kimi; do
+  for f in dsflash glm glmflash; do
     echo "--- $f ---"
     head -c 420 "$OUT/$f.md" 2>/dev/null
     echo

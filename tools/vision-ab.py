@@ -6,8 +6,7 @@
 import argparse, json, os, subprocess, sys, time
 
 WS = "/home/j/.openclaw/workspace"
-DEFAULT_MODELS = ["deepseek/deepseek-flash", "zai/glm-5.3", "qianwen-token-plan/qwen3.8-flash",
-                  "minimax/MiniMax-M3.1-Flash-Preview"]
+DEFAULT_MODELS = ["deepseek/deepseek-flash", "zai/glm-5.4", "zai/glm-5.3-flash"]
 GT = ["auto", "qwen4-max", "qwen4-max-preview", "qwen3.8-max", "qwen3.8-flash",
       "qwen3.7-plus", "qwen3.7-max", "qwen3.6-flash"]
 PROMPT = "只做一件事：把图中表格里的模型名称逐个列出，用英文逗号分隔，不要解释。"

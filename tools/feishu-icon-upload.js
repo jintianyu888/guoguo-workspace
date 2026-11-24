@@ -84,6 +84,6 @@ const SHOT = "/home/j/.openclaw/workspace/state/scratch/";
   const left = await banner();
   await p.screenshot({ path: SHOT + "icon-upload-" + appId.slice(-6) + ".png" });
   console.log(left ? "仍未发布：" + left : "已发布（无待发布变更）");
-  await b.close();
+  // 保持控制台浏览器常驻：不关闭 CDP 连接
   process.exit(left ? 1 : 0);
 })();

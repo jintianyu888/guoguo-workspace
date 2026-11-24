@@ -58,9 +58,9 @@ probe(){
     timeout 150 openclaw infer model run --model "$m" --gateway --prompt "$PROMPT_TXT" 2>&1
   fi
 }
-for M in deepseek/deepseek-v4-pro zai/glm-5.3 kimi-coding/kimi-k3.1-pro minimax/MiniMax-M3.1-Flash-Preview; do
+for M in deepseek/deepseek-flash zai/glm-5.4 zai/glm-5.3-flash; do
   THK=""
-  [ "$M" = "kimi-coding/kimi-k3.1-pro" ] && THK=on
+  THK=off
   T=$(mktemp)
   probe "$M" "$THK" > "$T"; RC=$?; B=$(wc -c < "$T")
   if [ $RC -ne 0 ] || [ "$B" -lt 20 ]; then probe "$M" "$THK" > "$T"; RC=$?; B=$(wc -c < "$T"); fi

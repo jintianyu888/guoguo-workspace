@@ -1,23 +1,20 @@
-#!/bin/bash
-# 页脚实时数据 v2 · 每项独立超时 + 并行 + 缓存兜底（永不阻塞）
-cd /home/j/.openclaw/workspace || exit 1
-TMP=$(mktemp -d)
-# 并行取三项，各自硬超时
-( timeout 10 sh tools/ds-balance.sh 2>/dev/null | tail -1 > "$TMP/bal" ) &
-( timeout 10 sh tools/peak-status.sh 2>/dev/null | sed -n '2p' > "$TMP/peak" ) &
-( timeout 10 sh tools/host-peak-report.sh 2>/dev/null | grep -E 'CPU 负载峰值|内存峰值' | tr '\n' ' ' > "$TMP/host" ) &
-wait
-bal=$(cat "$TMP/bal" 2>/dev/null | tr -d '\n')
-peak=$(cat "$TMP/peak" 2>/dev/null | tr -d '\n')
-host=$(cat "$TMP/host" 2>/dev/null | tr -d '\n')
-rm -rf "$TMP"
-# 余额兜底：读缓存文件（若有）
-if [ -z "$bal" ]; then
-  for f in /tmp/ds-balance.cache /home/j/.openclaw/workspace/state/ds-balance.cache; do
-    [ -f "$f" ] && bal="$(tail -1 "$f" 2>/dev/null)（缓存）" && break
-  done
-fi
-echo "· 余额: ${bal:-取不到}"
-echo "· 时段: ${peak:-取不到}"
-echo "· 主机: ${host:-取不到}"
-echo "· 此刻: $(date '+%Y-%m-%d %H:%M:%S')"
+#!/usr/bin/env bash
+# footer.sh v2 — 页脚取真实配置模型，杜绝管家自报模型名
+# 用法: footer.sh <管家id>  或  footer.sh <provider/model>
+set -uo pipefail
+X="${1:-main}"
+case "$X" in
+  */*) M="$X" ;;
+  *) M=$(/usr/bin/python3 - "$X" <<'PY'
+import json,sys
+aid=sys.argv[1]
+d=json.load(open('/home/j/.openclaw/openclaw.json'))
+a=d.get('agents',{})
+e=(a.get('entries') or {}).get(aid) or {}
+m=e.get('model') or a.get('defaults',{}).get('model') or {}
+if isinstance(m,str): print(m)
+else: print(m.get('primary') or '未采集')
+PY
+) ;;
+esac
+exec /usr/bin/python3 /home/j/.openclaw/workspace/tools/model-footer.py "$M"

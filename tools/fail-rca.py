@@ -48,6 +48,9 @@ def failures(hours):
     q = """select name, agent, started, status, coalesce(error,'') as error from runs
            where status not in ('ok','skipped') and started >= ? order by started desc"""
     rows = [dict(r) for r in c.execute(q, (since,))]
+    # 2026-11-24: 在飞任务(仍 running 且启动不足 30 分钟)不算失败，避免把正在跑的 cron 记成孤儿
+    cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - 30*60))
+    rows = [r for r in rows if not (r.get("status")=="running" and (r.get("started") or "") > cutoff)]
     return rows
 
 def cmd_check(a):

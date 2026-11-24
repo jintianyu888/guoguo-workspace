@@ -12,7 +12,7 @@ run_one() {
   echo "$(date '+%F %T') $m $B bytes" >> state/work/rev-retry.log
   [ "$B" -gt 400 ] && DONE=$((DONE+1))
 }
-run_one kimi-coding/kimi-k3.1-pro --thinking on
+run_one zai/glm-5.4 --thinking on
 run_one zai/glm-5.3
 if [ "$DONE" -gt 0 ]; then
   MSG=$(head -c 900 state/tmp/rev-retry-kimi*.txt 2>/dev/null; head -c 900 state/tmp/rev-retry-zai*.txt 2>/dev/null)

@@ -126,10 +126,10 @@
   /* v4.5.5 状态徽标：居中放大，备份=黄，告警=红 */
   #ocTop .ocSEG,#ocIdle .ocSEG{left:50%;top:50%;transform:translate(-50%,-50%);height:calc(100% - 4px);padding:0 16px;border-radius:7px;border-right:none;border:1px solid rgba(140,206,255,.45);background:linear-gradient(180deg,rgba(10,34,52,.96),rgba(8,34,53,.96));font:700 15px/1 ui-monospace,Consolas,monospace;letter-spacing:.6px;max-width:78%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-shadow:0 0 18px rgba(40,143,220,.32),inset 0 0 14px rgba(60,172,255,.10)}
   #ocTop .ocSEG .ocDot,#ocIdle .ocSEG .ocDot{width:8px;height:8px}
-  #ocTop .ocSEG.k-bak,#ocIdle .ocSEG.k-bak{color:#ffe9b0;border-color:rgba(255,200,66,.6);background:linear-gradient(180deg,rgba(58,42,6,.96),rgba(30,22,3,.96));box-shadow:0 0 18px rgba(255,190,40,.38),inset 0 0 14px rgba(255,205,70,.14);text-shadow:0 0 10px rgba(255,214,102,.85)}
-  #ocTop .ocSEG.k-bak .ocDot,#ocIdle .ocSEG.k-bak .ocDot{background:#ffd24a;box-shadow:0 0 10px #ffd24a}
-  #ocTop .ocSEG.k-alert,#ocIdle .ocSEG.k-alert{color:#ffdede;border-color:rgba(255,92,92,.62);background:linear-gradient(180deg,rgba(64,10,12,.96),rgba(34,5,7,.96));box-shadow:0 0 20px rgba(255,70,70,.45),inset 0 0 14px rgba(255,90,90,.16);text-shadow:0 0 10px rgba(255,120,120,.9)}
-  #ocTop .ocSEG.k-alert .ocDot,#ocIdle .ocSEG.k-alert .ocDot{background:#ff5b5b;box-shadow:0 0 10px #ff5b5b}
+  #ocTop .ocSEG.k-bak,#ocIdle .ocSEG.k-bak{color:#cfe6f8;border-color:rgba(150,210,255,.6);background:linear-gradient(180deg,rgba(10,40,64,.96),rgba(7,26,44,.96));box-shadow:0 0 18px rgba(90,180,255,.38),inset 0 0 14px rgba(120,200,255,.14);text-shadow:0 0 10px rgba(160,220,255,.85)}
+  #ocTop .ocSEG.k-bak .ocDot,#ocIdle .ocSEG.k-bak .ocDot{background:#7fc4ff;box-shadow:0 0 10px #7fc4ff}
+  #ocTop .ocSEG.k-alert,#ocIdle .ocSEG.k-alert{color:#eaf7ff;border-color:rgba(150,210,255,.78);background:linear-gradient(180deg,rgba(8,34,62,.98),rgba(4,18,34,.98));box-shadow:0 0 22px rgba(120,200,255,.5),inset 0 0 14px rgba(150,215,255,.2);text-shadow:0 0 10px rgba(190,232,255,.95)}
+  #ocTop .ocSEG.k-alert .ocDot,#ocIdle .ocSEG.k-alert .ocDot{background:#a8ddff;box-shadow:0 0 12px #a8ddff}
   /* v4.5.15 状态改整行文字后按状态着色（备份黄 / 告警红 / 其它绿） */
   /* v4.6.10 删除三条旧配色 !important：它们会把黄/绿档的深色字强制改回浅色，导致字发糊 */
   /* v4.1 上下两排大窗改为撑满可用高度（原来固定 --winH，底部会剩一条空白） */
@@ -817,14 +817,18 @@ header{display:flex;gap:12px}
   /* v4.6.42 上下文占用：放「队列 · 最近活动」行右侧，绝对阈值 120k/150k 变色，取不到显示 — */
   #ablist .row .aline.ctxline{display:flex;align-items:baseline;gap:10px;overflow:visible}
   #ablist .row .aline .atext{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #ablist .row .aline .ctx{flex:0 0 auto;font-size:13.5px;color:var(--dim);white-space:nowrap}
+  #ablist .row .aline .ctx{flex:0 0 auto;font-size:13.5px;color:inherit;white-space:nowrap}
+  /* v4.6.44 上下文占用：文字同正文色，超标只用高亮底纹，不再用红/黄文字色 */
+  #ablist .row .aline .ctx .den{color:inherit;opacity:.55}
+  #ablist .row .aline .ctx.warn{color:#cfe6f8;font-weight:600;background:none;padding:0}
+  #ablist .row .aline .ctx.bad{color:#eaf7ff;font-weight:700;background:none;padding:0;text-shadow:0 0 8px rgba(150,210,255,.45);animation:ctxPulse 2.4s ease-in-out infinite}
   #ablist .row .aline .ctx .den{font-size:11.5px;opacity:.72}
-  #ablist .row .aline .ctx.warn{color:#ffd24a}   /* v4.6.42 沿用状态条小黄；本皮 --yellow 是蓝，不能当警示色 */
-  #ablist .row .aline .ctx.bad{color:#ff5b5b}   /* v4.6.42 沿用状态条告警红；本皮 --red 是蓝，不能当警示色 */
   /* v4.6.42 /new 按钮：仅黄/红档显示，只复制不代发 */
   #ablist .row .aline .newbtn{flex:0 0 auto;font:inherit;font-size:11.5px;line-height:16px;padding:0 7px;border-radius:9px;border:1px solid rgba(123,190,239,.45);background:rgba(41,149,229,.08);color:var(--dim);cursor:pointer;white-space:nowrap}
   #ablist .row .aline .newbtn:hover{background:rgba(41,149,229,.18);color:var(--txt)}
-  #ablist .row .aline .newbtn.hot{border-color:rgba(255,91,91,.55);color:#ff5b5b;background:rgba(255,91,91,.08)}
+  #ablist .row .aline .newbtn.hot{border-color:rgba(150,210,255,.65);color:#eaf7ff;background:rgba(96,176,255,.14)}
+  @keyframes ctxPulse{0%,100%{opacity:.78}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){#ablist .row .aline .ctx.bad{animation:none;opacity:1}}
   #abtoast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;background:var(--panel);border:1px solid rgba(123,190,239,.45);border-radius:10px;padding:8px 14px;font-size:13.5px;color:var(--txt);z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.35)}
   #abtoast.on{opacity:1;transform:translateX(-50%) translateY(0)}
   #abfallback{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:99999;background:var(--panel);border:1px solid rgba(123,190,239,.45);border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
@@ -1298,6 +1302,24 @@ body.hud.hud-idle #hudcanvas{opacity:0}
   body.hud .pc>.m.c-r>.bar>b{background:#d9edfc}
   body.hud .pc>.m.c-y>.bar>b{background:#96cbf2}
   .logbody .ln.err{color:#ffffff!important;font-weight:600!important}
+  /* v4.6.45 /new 弹层 */
+  #abnewsheet{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center}
+  #abnewsheet .bg{position:absolute;inset:0;background:rgba(6,14,24,.55)}
+  #abnewsheet .card{position:relative;background:var(--panel,#0f1c2e);border:1px solid rgba(123,190,239,.45);border-radius:14px;padding:18px 20px;min-width:320px;max-width:92vw;box-shadow:0 18px 50px rgba(0,0,0,.5);color:var(--txt,#dfe9f5);font-size:14px}
+  #abnewsheet .h{font-size:15px;font-weight:600;margin-bottom:10px}
+  #abnewsheet .cmd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;letter-spacing:1px;background:rgba(41,149,229,.12);border:1px dashed rgba(123,190,239,.5);border-radius:8px;padding:10px;text-align:center;user-select:all}
+  #abnewsheet .tip{margin-top:10px;font-size:12.5px;opacity:.9}
+  #abnewsheet .tip2{margin-top:8px;font-size:11.5px;opacity:.55}
+  #abnewsheet .btns{margin-top:14px;display:flex;gap:10px;justify-content:flex-end}
+  #abnewsheet button{font:inherit;font-size:13px;padding:6px 14px;border-radius:9px;cursor:pointer;border:1px solid rgba(123,190,239,.45);background:rgba(41,149,229,.10);color:inherit}
+  #abnewsheet button.cpy{background:rgba(41,149,229,.10)}
+  #abnewsheet button.run{background:rgba(41,149,229,.35);font-weight:600}
+  #abnewsheet code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:4px;word-break:break-all}
+  /* v4.6.43 分级配色：只有 P0 用红底 */
+  .logbody .ln.p0{color:#fff!important;background:rgba(214,40,40,.55)!important;font-weight:700!important;border-radius:4px}
+  .logbody .ln.p1{color:#9fd8ff!important;font-weight:600!important}
+  .logbody .ln.p2{color:#7fc4ff!important}
+  .logbody .ln.noise{color:#6b7a8c!important;font-weight:400!important}
   .logbody .ln.warn{color:#c3e1f8!important}
   .logbody .ln.ok{color:#77bbee!important}
   .balrow .err{color:#ffffff!important;font-weight:700!important}
@@ -2926,16 +2948,32 @@ function pollLogTail(){
   }).catch(function(){});
 }
 setTimeout(pollLogTail, 1500); setInterval(pollLogTail, 8000);
+
+/* v4.6.43 日志分级：红=P0 服务不可用/数据风险/安防；橙=P1 任务失败/超时；黄=P2 警告；灰=噪音 */
+function sevClass(t){
+  var s = String(t||'');
+  var P0 = [
+    /service.{0,20}(unavailable|down|failed to start)/i, /EADDRINUSE/, /panic|fatal/i,
+    /out of memory|OOMKill/i, /disk (full|space exhausted)/i, /SQLITE_(CORRUPT|FULL|IOERR)/i,
+    /备份.{0,8}(失败|损坏)/, /backup.{0,20}(fail|corrupt)/i, /data loss/i,
+    /unauthori[sz]ed access|security alert|intrusion/i
+  ];
+  var NOISE = [/websocket|\bws\b|reconnect/i, /heartbeat|keepalive/i, /deprecat/i, /retry|backoff/i, /slow .{0,20}sqlite/i, /ECONNRESET|EPIPE|socket hang up/i];
+  var P1 = [/timeout|timed out/i, /fail/i, /exception/i, /ERR_[A-Z]+/, /\b5\d\d\b/, /rate.?limit|quota/i];
+  for (var i=0;i<P0.length;i++) { if (P0[i].test(s)) return 'p0'; }
+  for (var j=0;j<NOISE.length;j++) { if (NOISE[j].test(s)) return 'noise'; }
+  for (var k=0;k<P1.length;k++) { if (P1[k].test(s)) return 'p1'; }
+  if (/warn/i.test(s)) return 'p2';
+  if (/(ok|success|done|ready|health)/i.test(s)) return 'ok';
+  return '';
+}
 function renderLogs(){
   var el = document.getElementById('logbody');
   var lines = STATE.logs || [];
   var nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
   el.innerHTML = lines.map(function(l){
     var t = String(l.s || l.line || '');
-    var cls = '';
-    if (/error|fail|exception|ERR/i.test(t)) cls = 'err';
-    else if (/warn/i.test(t)) cls = 'warn';
-    else if (/(ok|success|done)/i.test(t)) cls = 'ok';
+    var cls = sevClass(t);
     return '<div class="ln ' + cls + '">' + esc(t) + '</div>';
   }).join('');
   var tg = document.getElementById('logtag');
@@ -3053,24 +3091,117 @@ function abFallbackNew(){
   var inp = box.querySelector('input'); inp.focus(); inp.select();
 }
 function abCopyNew(name){
-  var ok = function(){ abToast('已复制 /new — 去「' + name + '」的对话里粘贴'); };
-  var bad = function(){ abFallbackNew(); };
+  /* v4.6.45 点击 /new 必开弹层：不依赖剪贴板是否成功，用户一定看得到反馈 */
+  var copied = false;
   try {
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText('/new').then(ok, bad);
-    } else { bad(); }
-  } catch(e) { bad(); }
+    var ta = document.createElement('textarea');
+    ta.value = '/new'; ta.setAttribute('readonly','');
+    ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,4);
+    copied = document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch(e) { copied = false; }
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    try { navigator.clipboard.writeText('/new'); copied = true; } catch(e) {}
+  }
+
+  var old = document.getElementById('abnewsheet');
+  if (old) old.remove();
+  var box = document.createElement('div');
+  box.id = 'abnewsheet';
+  box.innerHTML =
+    '<div class="bg"></div>' +
+    '<div class="card">' +
+      '<div class="h">给「' + esc(name || '该管家') + '」开新会话</div>' +
+      '<div class="cmd" id="abnewcmd">/new</div>' +
+      '<div class="tip">' + (copied ? '已复制到剪贴板 ✅ 直接到该管家的对话里粘贴发送即可' : '请点下面「复制」，或手动选中上面的 /new 复制') + '</div>' +
+      '<div class="btns"><button type="button" class="cpy">复制 /new</button><button type="button" class="cls">关闭</button></div>' +
+      '<div class="tip2">面板不代发：它没有网关鉴权，只能帮你把命令准备好。</div>' +
+    '</div>';
+  document.body.appendChild(box);
+  box.querySelector('.bg').addEventListener('click', function(){ box.remove(); });
+  box.querySelector('.cls').addEventListener('click', function(){ box.remove(); });
+  box.querySelector('.cpy').addEventListener('click', function(){
+    var el = document.getElementById('abnewcmd');
+    var rg = document.createRange(); rg.selectNodeContents(el);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rg);
+    var ok = false; try { ok = document.execCommand('copy'); } catch(e) {}
+    if (!ok && navigator.clipboard) { try { navigator.clipboard.writeText('/new'); ok = true; } catch(e) {} }
+    box.querySelector('.tip').textContent = ok ? '已复制 ✅ 去粘贴吧' : '没复制成功，请手动选中 /new 复制';
+  });
 }
+function abNewRun(name, key){
+  var oldBox = document.getElementById('abnewsheet');
+  if (oldBox) oldBox.remove();
+  var box = document.createElement('div');
+  box.id = 'abnewsheet';
+  box.innerHTML = '<div class="bg"></div><div class="card">' +
+    '<div class="h">给「' + esc(name || '该管家') + '」开新会话？</div>' +
+    '<div class="tip">点「立即执行」＝ 直接调网关重置该会话（等同发 /new）：上下文清空，历史仍存档。<br>' +
+    (key ? '会话：<code>' + esc(key) + '</code>' : '<b>这一行没拿到会话 key，只能复制。</b>') + '</div>' +
+    '<div class="btns">' +
+      '<button type="button" class="cpy">只复制 /new</button>' +
+      '<button type="button" class="cls">取消</button>' +
+      (key ? '<button type="button" class="run">立即执行</button>' : '') +
+    '</div></div>';
+  document.body.appendChild(box);
+  box.querySelector('.bg').addEventListener('click', function(){ box.remove(); });
+  box.querySelector('.cls').addEventListener('click', function(){ box.remove(); });
+  box.querySelector('.cpy').addEventListener('click', function(){ box.remove(); abCopyNew(name); });
+  var run = box.querySelector('.run');
+  if (!run) return;
+  run.addEventListener('click', function(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+    run.disabled = true;
+    run.textContent = '执行中…';
+    var _t0 = Date.now();
+    var _tick = setInterval(function(){
+      var n0 = live();
+      if (!n0) { clearInterval(_tick); return; }
+      var r0 = n0.querySelector('.run');
+      if (!r0 || r0.disabled === false) { clearInterval(_tick); return; }
+      r0.textContent = '执行中…' + Math.round((Date.now() - _t0) / 1000) + 's';
+    }, 1000);
+    function live(){ return document.getElementById('abnewsheet'); }
+    function setTip(html){ var n = live(); if (n) { var t = n.querySelector('.tip'); if (t) t.innerHTML = html; } }
+    function setHead(txt){ var n = live(); if (n) { var h = n.querySelector('.h'); if (h) h.textContent = txt; } }
+    function fail(msg){
+      var n = live();
+      if (n) { var r = n.querySelector('.run'); if (r) { r.disabled = false; r.textContent = '重试'; } }
+      setTip('❌ 执行失败：' + msg + '<br>可改用「只复制 /new」手动发送。');
+    }
+    fetch('/api/agent-new', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: key }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.ok) {
+          setHead('✅ 已开新会话');
+          setTip('「' + esc(name || '') + '」上下文已重置，会话 id <code>' + esc(String(d.sessionId || '').slice(0, 8)) + '…</code><br>下一条消息将是全新上下文。');
+          var n2 = live();
+          if (n2) { var r2 = n2.querySelector('.run'); if (r2) { r2.remove(); } }
+          setTimeout(function(){
+            var n3 = live();
+            if (n3) { n3.remove(); }
+            try { location.reload(); } catch (e) {}
+          }, 1600);
+        } else {
+          fail(esc((d && d.error) || '未知错误'));
+        }
+      })
+      .catch(function(e){ fail(esc((e && e.message) || 'network')); });
+  });
+}
+
 (function(){
   function bind(){
-    var el = document.getElementById('ablist');
-    if(!el || el.__newBtnBound) return;
+    var el = document;
+    if(el.__newBtnBound) return;
     el.__newBtnBound = true;
     el.addEventListener('click', function(ev){
       var t = ev.target; var b = (t && t.closest) ? t.closest('button.newbtn') : null;
       if(!b) return;
       ev.preventDefault(); ev.stopPropagation();
-      abCopyNew(b.getAttribute('data-name') || '');
+      abNewRun(b.getAttribute('data-name') || '', b.getAttribute('data-key') || '');
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
@@ -3103,7 +3234,7 @@ function renderAB(){
     var _tok = '1h ' + fmtTok(_a1[0] + _a1[1]) + ' · 6h ' + fmtTok(_a6[0] + _a6[1]) + ' · 12h ' + fmtTok(_a12[0] + _a12[1]) + ' · 24h ' + fmtTok(_a24[0] + _a24[1]);
     /* v4.6.42 上下文占用（绝对阈值 120k/150k；取不到显示 —，不拿累计 token 顶替） */
     var _ctxHtml = '<span class="ctx" title="上下文占用取不到：session 字段缺失或非实时">—</span>';
-    var _newBtn = '';   /* v4.6.42 仅黄/红档才出 /new 按钮；只复制，不代发 */
+    var _newBtn = '<button type="button" class="newbtn" data-name="' + esc(label) + '" data-key="' + esc(r.key || '') + '" title="点一下直接给该管家开新会话（有确认框）">/new</button>';   /* v4.6.46 直接执行 */
     try {
       var _c = r.ctx;
       if (_c && typeof _c.used === 'number' && typeof _c.window === 'number' && _c.window > 0) {
@@ -3114,8 +3245,8 @@ function renderAB(){
         var _agoTxt = _agoSec === null ? '时间未知' : (_agoSec < 120 ? _agoSec + ' 秒前' : ago(Date.now() - _agoSec * 1000));
         var _tip = '上下文 ' + fmtTok(_c.used) + ' · 压缩线 150k · 窗口 ' + _wk(_c.window) + '（' + _pct + '%）· 更新于 ' + _agoTxt + ' · 会话 ' + (r.key || '—');
         _ctxHtml = '<span class="ctx' + _cls + '" title="' + esc(_tip) + '">' + esc(fmtTok(_c.used)) + '<span class="den"> / 150k</span></span>';
-        if (_c.used >= 120000) {
-          _newBtn = '<button type="button" class="newbtn' + (_c.used >= 150000 ? ' hot' : '') + '" data-name="' + esc(label) + '" title="复制 /new；到该管家的对话里发送即可新开一轮（本面板不代发）">/new</button>';
+        if (true) {   /* v4.6.44 每行都给 /new；超标行加 hot 描边 */
+          _newBtn = '<button type="button" class="newbtn' + (_c.used >= 150000 ? ' hot' : '') + '" data-name="' + esc(label) + '" data-key="' + esc(r.key || '') + '" title="点一下直接给该管家开新会话（有确认框）">/new</button>';
         }
       }
     } catch (e) {}
@@ -3412,7 +3543,7 @@ function fitOpsHd(){
       if(!dot){
         dot=document.createElement('span'); dot.id='verdot'; dot.title='OpenClaw 有新版本';
         dot.setAttribute('aria-label','OpenClaw 有新版本');
-        dot.style.cssText='position:absolute;top:-2px;right:-3px;width:4px;height:4px;border-radius:50%;background:#ffc800;box-shadow:0 0 4px rgba(255,200,0,.85)';   /* 运维台在主题色相子树内，不反相会把琥珀点渲染成绿色 */
+        dot.style.cssText='position:absolute;top:-2px;right:-3px;width:4px;height:4px;border-radius:50%;background:#7fc4ff;box-shadow:0 0 4px rgba(255,200,0,.85)';   /* 运维台在主题色相子树内，不反相会把琥珀点渲染成绿色 */
         v.appendChild(dot);
       }
       dot.style.display = up ? 'block' : 'none';
@@ -4008,8 +4139,8 @@ renderClock();
   /* v4.6.22 字母雨跟随信息条状态：四档色板，默认蓝。与信息条共用 _segPaint 里的 key 映射（同源，不另写一套） */
   var RAINPAL={
     blue  :{head:'#d8ecff',body:'#3ab0ff',hrgb:'216,236,255',bodyRgb:'58, 176, 255',glowRgb:'120, 197, 255'},
-    red   :{head:'#ffd6d6',body:'#ff2a2a',hrgb:'255,214,214',bodyRgb:'255, 42, 42',glowRgb:'255, 90, 90'},
-    yellow:{head:'#fff6c9',body:'#ffd400',hrgb:'255,246,201',bodyRgb:'255, 212, 0',glowRgb:'255, 225, 120'},
+    red   :{head:'#dff0ff',body:'#4aa8ff',hrgb:'223,240,255',bodyRgb:'74, 168, 255',glowRgb:'130, 200, 255'},
+    yellow:{head:'#eaf7ff',body:'#8fd0ff',hrgb:'234,247,255',bodyRgb:'143, 208, 255',glowRgb:'175, 225, 255'},
     green :{head:'#e2ffc4',body:'#8cff2e',hrgb:'226,255,196',bodyRgb:'140, 255, 46',glowRgb:'170, 255, 110'}
   };
   window.__RAINPALNOW=RAINPAL.blue;
@@ -4734,8 +4865,8 @@ function segBadge(){
     try{ window.__rainPal(key==='alert'?'red':(key==='bak'?'yellow':'green')); }catch(e){}
     var pct=(typeof window.__SEGPCT==='number')?window.__SEGPCT:null;
     var ST={
-      alert:{bg:'#ff0000',bd:'#ff5a5a',sh:'0 0 18px rgba(255,0,0,.85)',c:'#ffffff',bar:'rgba(255,255,255,.50)',ts:'0 1px 1px rgba(0,0,0,.80)'},        /* v4.6.6 鲜红：纯红 #ff0000（旧 #d90000 经双层色相滤镜后发暗酒红） */
-      bak:{bg:'#ffd400',bd:'#ffc400',sh:'0 0 18px rgba(255,212,0,.88)',c:'#1a1000',bar:'rgba(92,62,0,.45)',ts:'0 1px 1px rgba(255,255,255,.35)'},        /* v4.6.6 小黄鸭黄 #ffd400，描边同色系不再发白 */
+      alert:{bg:'#1e78c8',bd:'#63b8ff',sh:'0 0 18px rgba(90,180,255,.85)',c:'#ffffff',bar:'rgba(255,255,255,.50)',ts:'0 1px 1px rgba(0,0,0,.80)'},        /* v4.6.47 主公令：告警改蓝，不再用红 */
+      bak:{bg:'#2f8fd8',bd:'#7fc4ff',sh:'0 0 18px rgba(120,200,255,.88)',c:'#eaf7ff',bar:'rgba(20,60,100,.45)',ts:'0 1px 1px rgba(255,255,255,.35)'},        /* v4.6.47 主公令：备份黄改蓝 */
       act:{bg:'#8cff2e',bd:'#8cff2e',sh:'0 0 22px rgba(140,255,46,.92)',c:'#06240a',bar:'rgba(20,60,0,.45)',ts:'0 1px 1px rgba(0,0,0,.55)'}       /* v4.6.15 恢复语义绿：正常态必须绿，不能被主题蓝化 */
     };
     /* v4.6.7 信息条已移出主题滤镜（#ocTop/#ocIdle 上 filter:none），不再需要反滤镜；

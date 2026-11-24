@@ -19,7 +19,7 @@ case "$N" in 2|3) ;; *) echo "ERR --n 只能 2/3"; exit 2;; esac
 WANT=$((N+1))
 
 # 厂商池（旗舰档；flash/preview/turbo 不进）
-POOL=("zai|zai/glm-5.3" "kimi|kimi-coding/kimi-k3.1-pro" "minimax|minimax/MiniMax-M3" "qianwen|qianwen-token-plan/qwen3.8-max")
+POOL=("zai|zai/glm-5.4" "zai2|zai/glm-5.3-flash" "ds|deepseek/deepseek-flash")
 
 # 随机洗牌取 WANT 家
 mapfile -t SEL < <(printf "%s\n" "${POOL[@]}" | shuf | head -n "$WANT")

@@ -2,15 +2,15 @@
 # model-slot.sh —— 按时段切换主力模型
 # 2026-10-19 主公令：工作日高峰档（09-12，DeepSeek 全价）走 GLM 省真金白银；
 # 半价档（午间12-14、18点后夜间、周末节假日全天）走 deepseek-flash——半价便宜，且不烧 GLM 积分
-# 2026-10-23 主公令：下午档（14-18）改走 Kimi 月卡日常档 kimi-for-coding（订阅内零边际），GLM 留守上午高峰
+# 2026-11-24 更新：Kimi 已退役（额度耗尽+403），下午档改走 zai/glm-5.4；全链路不再引用 kimi/minimax/qwen
 # 用法: model-slot.sh peak|afternoon|offpeak
 set -u
 W=/home/j/.openclaw/workspace
 LOG=$W/state/work/model-slot.log
 mkdir -p "$W/state/work"
-GLM='{"primary":"zai/glm-5.3-flash","fallbacks":["zai/glm-5.3","kimi-coding/kimi-for-coding","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
-KIMI='{"primary":"kimi-coding/kimi-for-coding","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
-DS='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3-flash","zai/glm-5.3","kimi-coding/kimi-for-coding","ollama/gpt-oss:20b"]}'
+GLM='{"primary":"zai/glm-5.3-flash","fallbacks":["zai/glm-5.4","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
+ZAI='{"primary":"zai/glm-5.4","fallbacks":["zai/glm-5.3-flash","deepseek/deepseek-flash","ollama/gpt-oss:20b"]}'
+DS='{"primary":"deepseek/deepseek-flash","fallbacks":["zai/glm-5.3-flash","ollama/gpt-oss:20b"]}'
 case "${1:-}" in
   peak)           JSON="$GLM" ;;   # 上午高峰全价档：GLM 主力
   afternoon)      JSON="$GLM" ;;  # 下午档：GLM 主力（避开编码卡 ToS），Kimi 仅在 fallback 链

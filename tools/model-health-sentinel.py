@@ -73,6 +73,30 @@ def classify(ev):
         return "server"
     return reason or "other"
 
+
+
+def policy_models():
+    """只监控模型策略里在役的模型；退役厂商的残留请求不算故障。"""
+    try:
+        p = json.load(open(os.path.join(WS, "state/model/policy.json"), encoding="utf-8"))
+    except Exception:
+        return None
+    out = set()
+    for key in ("primary", "fallbacks", "consultants", "senate_seats"):
+        v = p.get(key)
+        if isinstance(v, str):
+            out.add(v)
+        elif isinstance(v, list):
+            for x in v:
+                if isinstance(x, str):
+                    out.add(x)
+                elif isinstance(x, dict):
+                    for k in ("model", "id"):
+                        if x.get(k):
+                            out.add(x[k])
+    return out or None
+
+
 def main():
     args = sys.argv[1:]
     minutes = 60
@@ -99,8 +123,13 @@ def main():
 
     now = time.time()
     models = {}
+    active = policy_models()
     for m in sorted(set(list(use.keys()) + list(stats.keys()))):
         s = stats.get(m, {"fails": 0, "reasons": {}, "last_detail": ""})
+        if active is not None and m not in active:
+            models[m] = {"status": "retired", "ok_window": oks.get(m, 0), "fails_window": s["fails"],
+                         "reasons": s["reasons"], "agents": [], "last_detail": s["last_detail"]}
+            continue
         hard = sum(v for k, v in s["reasons"].items() if k in ("rate_limit", "auth"))
         if hard >= 3:
             status = "down"

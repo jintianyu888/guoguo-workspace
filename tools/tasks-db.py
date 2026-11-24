@@ -105,6 +105,22 @@ def cmd_done(args):
     nxt=''
     for i,a in enumerate(args):
         if a=='--next': nxt=args[i+1]
+    # --- THIRD_EYE (2026-11-24 主公令)：收口必须有第三视角记录 ---
+    import subprocess as _sp2, os as _os2, json as _json2
+    _te = _os2.path.join('/home/j/.openclaw/workspace','state/verify/third-eye.jsonl')
+    _has = False
+    if _os2.path.exists(_te):
+        for _l in open(_te,encoding='utf-8'):
+            try: _r=_json2.loads(_l)
+            except Exception: continue
+            if str(_r.get('task'))==str(no) and (_r.get('rc')==0 or _r.get('verdict')=='通过'):
+                _has=True; break
+    if not _has and '--force' not in args:
+        print('拒绝关闭 #%s：缺少第三视角验收记录'%no)
+        print('  先跑：python3 tools/third-eye.py record --task %d --cmd "<验收命令>"'%no)
+        print('  交付类再加：python3 tools/third-eye.py review --task %d --text <证据文件> --provider glm'%no)
+        print('  确无机器口径：--force --why "原因"（会记入审计）')
+        return 8
     c=conn(); r=c.execute('SELECT status FROM tasks WHERE no=?',(no,)).fetchone()
     if not r: print('无此任务'); return 2
     old=r['status']
@@ -197,7 +213,16 @@ def cmd_show(args):
 
 def cmd_add(args):
     # add <no> <title> [key=value ...]  key: status/group/prio/kind/verify/note
+    # MUST_VERIFY (2026-11-24 主公令)：新建任务必须带 verify=，否则拒绝入账
     no=int(args[0]); title=args[1]
+    if not any(str(a).startswith('verify=') for a in args) and '--no-verify' not in args:
+        print('拒绝建单：缺少 verify=')
+        print('请给验收口径：verify="<机器可跑命令>"，或等主公类用 verify="HUMAN:<等待条件>"')
+        print('确属纯备注可用 --no-verify（会记入 state/verify/no-verify.log）')
+        import time as _t, os as _os
+        with open('/home/j/.openclaw/workspace/state/verify/no-verify.log','a') as f:
+            f.write(_t.strftime('%F %T') + ' ' + title + chr(10))
+        return 7
     if '--force' not in args:
         import subprocess as _sp
         try:

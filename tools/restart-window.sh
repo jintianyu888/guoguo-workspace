@@ -137,6 +137,10 @@ say "重启后自检：$POST"
 
 # 5.6) 重启后升级链（2026-11-22 主公令：先重启 → 验备份 → 体检 → 升级）
 if [ "$H" = "200" ]; then
+  # 2026-11-24 主公令：仅工作日升级；周末只重启，不升级
+  if [ "$(date +%u)" -ge 6 ]; then
+    say "周末：按主公令不升级，只重启"
+  else
   say "→ 升级链：验备份完整性"
   if ! timeout 300 bash "$W/tools/backup-integrity.sh" >> "$LOG" 2>&1; then
     say "备份完整性未通过 → 今日不升级"
@@ -164,6 +168,7 @@ if [ "$H" = "200" ]; then
         esac ;;
       *) say "无需升级：$DEC" ;;
     esac
+  fi
   fi
 fi
 

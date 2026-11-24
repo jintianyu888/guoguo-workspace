@@ -15,7 +15,7 @@ TESTS=[("abcabcbb",3),("bbbbb",1),("pwwkew",3),("",0)]
 def call(m,p,to=240):
     t=time.time()
     try:
-        extra=["--thinking","on"] if m.startswith("kimi-coding/kimi-k3.1") else []
+        extra=[]
         r=subprocess.run(["openclaw","infer","model","run","--agent","main","--gateway","--model",m]+extra+["--prompt",p],capture_output=True,text=True,timeout=to)
         out=r.stdout
     except subprocess.TimeoutExpired:

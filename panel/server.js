@@ -2118,6 +2118,33 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* v4.6.46 面板 /new 真执行：调网关 sessions.reset（等价 /new），失败回退为复制 */
+  if (url.pathname === '/api/agent-new' && req.method === 'POST') {
+    let raw = '';
+    req.on('data', c => { raw += c; if (raw.length > 4000) req.destroy(); });
+    req.on('end', () => {
+      let key = '';
+      try { key = String(JSON.parse(raw || '{}').key || ''); } catch (e) {}
+      const bad = (code, msg) => { res.writeHead(code, {'content-type':'application/json; charset=utf-8'}); res.end(JSON.stringify({ok:false,error:msg})); };
+      if (!/^agent:[A-Za-z0-9._:-]{1,160}$/.test(key)) return bad(400, 'bad key');
+      const cp2 = require('child_process');
+      cp2.execFile(OPENCLAW_BIN, ['gateway','call','sessions.reset','--params', JSON.stringify({key}), '--json', '--timeout','20000'],
+        { timeout: 25000, cwd: '/home/j' }, (e, so, se) => {
+          let out = null;
+          try { out = JSON.parse(String(so || '')); } catch (x) {}
+          const ok = !!(out && out.ok);
+          try {
+            fs.appendFileSync('/home/j/.openclaw/workspace/state/work/panel-agent-new.log',
+              new Date().toISOString() + ' key=' + key + ' ok=' + ok + ' sid=' + ((out && out.entry && out.entry.sessionId) || '-') + (e ? ' err=' + String(e.message).slice(0,120) : '') + String.fromCharCode(10));
+          } catch (x) {}
+          res.writeHead(ok ? 200 : 502, {'content-type':'application/json; charset=utf-8'});
+          res.end(JSON.stringify({ ok: ok, key: key,
+            sessionId: (out && out.entry && out.entry.sessionId) || null,
+            error: ok ? null : ((out && out.error && out.error.message) || String(se || (e && e.message) || 'reset failed')).slice(0, 200) }));
+        });
+    });
+    return;
+  }
   if (url.pathname === '/api/butler-todos') {
     const now = Date.now();
     if (!BT_C || now - BT_C.t > 20000) {

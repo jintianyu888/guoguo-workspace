@@ -86,8 +86,11 @@ def sync():
         names = dict(c.execute("SELECT job_id,name FROM jobs").fetchall())
         for r in rows:
             dur = round((r[5] - r[4]) / 1000, 1) if r[5] and r[4] else None
-            cur = c.execute("INSERT OR IGNORE INTO runs(receipt_id,job_id,name,agent,status,started,finished,seconds,error) "
-                            "VALUES(?,?,?,?,?,?,?,?,?)",
+            cur = c.execute("INSERT INTO runs(receipt_id,job_id,name,agent,status,started,finished,seconds,error) "
+                            "VALUES(?,?,?,?,?,?,?,?,?) "
+                            "ON CONFLICT(receipt_id) DO UPDATE SET status=excluded.status, finished=excluded.finished,"
+                            " seconds=excluded.seconds, error=excluded.error, name=coalesce(excluded.name,runs.name) "
+                            "WHERE runs.status='running' OR excluded.status!='running'",
                             (r[0], r[1], names.get(r[1]), r[2], r[3], ts(r[4]), ts(r[5]), dur, (r[6] or "")[:300]))
             n_runs += cur.rowcount
     # 2.5) 已从 cron 删除的任务，标记停用（保留历史回执）
