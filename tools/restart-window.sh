@@ -132,7 +132,9 @@ if [ "$H" != "200" ] || [ "$NEW_PID" = "$OLD_PID" ] || [ -z "$NEW_PID" ] || [ "$
   notify "【重启窗口】重启未生效：健康=$H，PID $OLD_PID→$NEW_PID。看门狗与自救已介入，请查看 state/work/restart-window.log"
   exit 7
 fi
-POST=$(timeout 240 bash "$W/tools/console-cmd.sh" selfcheck 2>&1 | tail -2 | head -1)
+# 2026-11-25 修：原写法 tail -2|head -1 会抓到分隔线，导致升级闸门误判「体检未通过」
+POST=$(timeout 240 bash "$W/tools/console-cmd.sh" selfcheck 2>&1 | grep -oE 'PASS [0-9]+ / WARN [0-9]+ / FAIL [0-9]+' | tail -1)
+[ -z "$POST" ] && POST="PASS - / WARN - / FAIL -"
 say "重启后自检：$POST"
 
 # 5.6) 重启后升级链（2026-11-22 主公令：先重启 → 验备份 → 体检 → 升级）

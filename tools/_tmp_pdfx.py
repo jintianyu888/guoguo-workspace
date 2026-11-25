@@ -1,29 +1,11 @@
-import pikepdf, os
-from pikepdf import Name, Dictionary
-A4W,A4H=595.28,841.89
-LM,RM=56.7,56.7          # 20mm 左右
-TOP,BOT=56.7,56.7
-left,right=LM,A4W-RM
-width=right-left
-systems=9
-gap=8.0                   # 线间距 8pt（约 2.8mm）
-staff_h=gap*4             # 五线四条间隔
-usable=A4H-TOP-BOT
-block=usable/systems      # 每个系统占高
-pdf=pikepdf.new()
-page=pdf.add_blank_page(page_size=(A4W,A4H))
-ops=[]
-for i in range(systems):
-    top=A4H-TOP-i*block-(block-staff_h)/2
-    for k in range(5):
-        y=top-k*gap
-        ops.append("0.6 w %.2f %.2f m %.2f %.2f l S"%(left,y,right,y))
-page.Contents=pdf.make_stream(("\n".join(ops)).encode())
-page.Resources=Dictionary()
-out="/home/j/openclaw-workspaces/print/out/20261124_空白五线谱_A4_9行.pdf"
-pdf.docinfo["/Title"]="空白五线谱 A4 9行"
-pdf.save(out); print("saved",os.path.getsize(out))
-import pypdfium2 as pdfium
-d=pdfium.PdfDocument(out); print("pages",len(d))
-d[0].render(scale=1.4).to_pil().convert("RGB").resize((680,962)).save("/home/j/openclaw-workspaces/print/staff_a4.png")
-print("ok")
+from PIL import Image, ImageChops
+import shutil
+new="/home/j/openclaw-workspaces/print/media/inbound/openclaw-staged-34c1101e-223f-4c8f-9683-7993359f7763/input-d3669ebe-0902-4efd-8bbb-4b269287593e.jpg"
+old="/home/j/openclaw-workspaces/print/scores/files/20261120_慌啥子嘛_第1页_虫虫音乐.jpg"
+a=Image.open(new).convert("L"); b=Image.open(old).convert("L")
+print("new",a.size,"old",b.size)
+a2=a.resize((600,int(600*a.height/a.width))); b2=b.resize((600,int(600*b.height/b.width)))
+if a2.size!=b2.size: b2=b2.resize(a2.size)
+h=ImageChops.difference(a2,b2).histogram(); tot=sum(h); big=sum(h[40:])
+print("diff>40 %:", round(100*big/tot,2))
+shutil.copy2(new,"/home/j/openclaw-workspaces/print/scores/files/20261125_慌啥子嘛_第1页_再收.jpg")

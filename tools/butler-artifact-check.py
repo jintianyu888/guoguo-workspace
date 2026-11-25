@@ -24,23 +24,27 @@ CAND = [D + ".md", "self-review-" + D + ".md", D2 + ".md", "selfcheck-" + D + ".
 bad = []
 for name, d in WS.items():
     best = None
-    for c in CAND:
-        p = os.path.join(d, c)
-        if os.path.exists(p):
-            best = p if not best or os.path.getsize(p) > os.path.getsize(best) else best
+    if os.path.isdir(d):
+        for root, dirs, files in os.walk(d):
+            depth = root[len(d):].count(os.sep)
+            if depth >= 4:
+                dirs[:] = []
+                continue
+            dirs[:] = [x for x in dirs if x not in ('.git', 'node_modules', '.history')]
+            for f in files:
+                if (D in f or D2 in f) and f.endswith('.md'):
+                    p = os.path.join(root, f)
+                    try:
+                        if os.path.getsize(p) < 800:
+                            continue
+                    except OSError:
+                        continue
+                    best = p if not best or os.path.getsize(p) > os.path.getsize(best) else best
     if not best:
-        cands = []
-        if os.path.isdir(d):
-            for f in os.listdir(d):
-                if REF.isoformat() in f or D2 in f:
-                    cands.append(os.path.join(d, f))
-        best = max(cands, key=os.path.getsize) if cands else None
-    if not best:
-        bad.append("%s 无 %s 自审产物" % (name, D))
-        continue
-    if os.path.getsize(best) < 800:
-        bad.append("%s 产物过小(%dB<800)" % (name, os.path.getsize(best)))
+        bad.append("%s 无 %s 自审产物（>=800B，递归查 state/self-review 等子目录）" % (name, D))
+        print("❌ %s" % bad[-1])
+    else:
+        print("✅ %s %s (%dB)" % (name, os.path.relpath(best, d), os.path.getsize(best)))
 if bad:
-    print("参考日 %s：" % D + "；".join(bad))
-    sys.exit(1)
-print("参考日 %s：五家自审产物齐全（>=800B）" % D)
+    print("结论：FAIL %d 家缺产物" % len(bad)); sys.exit(1)
+print("GREEN 五家自审产物齐全（%s）" % D); sys.exit(0)
