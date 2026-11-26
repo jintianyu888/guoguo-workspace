@@ -37,6 +37,7 @@ health(){ [ "$(timeout 10 curl -s -o /dev/null -w '%{http_code}' "http://127.0.0
 schemaver(){ timeout 20 python3 "$WS/tools/upgrade-dbcheck.py" schema 2>/dev/null; }
 migfail(){ timeout 20 python3 "$WS/tools/upgrade-dbcheck.py" migfail 2>/dev/null; }
 dbwrite(){ timeout 30 python3 "$WS/tools/upgrade-dbcheck.py" write >/dev/null 2>&1; }
+dbintegrity(){ timeout 180 bash "$WS/tools/db-integrity-gate.sh" >/tmp/dbgate.out 2>&1; }
 acount(){ timeout 90 openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);print(len(d if isinstance(d,list) else d.get("agents",[])))' 2>/dev/null; }
 ccount(){ timeout 90 openclaw cron list --json 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);j=d if isinstance(d,list) else d.get("jobs",[]);print(len(j))' 2>/dev/null; }
 waithealth(){ i=0; while [ $i -lt 100 ]; do health && return 0; sleep 3; i=$((i+1)); done; return 1; }
@@ -61,7 +62,10 @@ for dst in sys.argv[2:]:
     shutil.copy2(src, dst)
     print("  还原", os.path.basename(dst), "%.1fMB" % (os.path.getsize(dst) / 1048576))
 PY
-  systemctl --user start openclaw-gateway >/dev/null 2>&1
+  # 2026-11-26：旧版二进制会被降级保护挡住（config 版本戳），先改戳再启动
+  export OPENCLAW_ALLOW_OLDER_BINARY_DESTRUCTIVE_ACTIONS=1
+  python3 "$WS/tools/stamp-config-version.py" "$CUR" 2>&1 | sed "s/^/  /"
+  bash "$WS/tools/gw-start-guard.sh" >/dev/null 2>&1 || true
   if waithealth; then
     say "  回滚后健康 OK：版本 $(ver) schema $(schemaver)"
     note rollback "to $CUR ok"
@@ -156,6 +160,23 @@ for src in sys.argv[2:]:
 sys.exit(1 if bad else 0)
 PY
 [ $? -eq 0 ] || die "数据库快照失败，未做任何改动"
+# 2026-11-26 顾问必改：快照必须落到"异盘"才算数（同盘坏盘一次全没）
+OFFD=""
+for cand in /mnt/x /mnt/d /mnt/e; do
+  [ -d "$cand" ] && mountpoint -q "$cand" 2>/dev/null && { OFFD="$cand"; break; }
+done
+if [ -n "$OFFD" ]; then
+  ODIR="$OFFD/oc-upgrade-snapshots/$(basename "$BK")"
+  mkdir -p "$ODIR" 2>/dev/null && cp -f "$BK"/* "$ODIR"/ 2>/dev/null
+  if [ -f "$ODIR/openclaw.sqlite" ]; then
+    say "  异盘副本 → $ODIR（$(du -sh "$ODIR" 2>/dev/null | cut -f1)）"
+  else
+    die "异盘副本写入失败（$ODIR），拒绝继续升级"
+  fi
+else
+  say "  ⚠ 无异盘可写，仅本盘快照（$BK）"
+  timeout 60 bash "$WS/tools/notify.sh" --alert "【升级】未找到可挂载异盘，升级快照仅存本盘 $BK" >/dev/null 2>&1 || true
+fi
 note snapshot "$BK"
 
 if [ "$MODE" = dryrun ]; then say "（dry-run 到此为止）备份在 $BK"; note dryrun "$BK"; exit 0; fi
@@ -202,6 +223,8 @@ FAILS=""
 [ "${CR:-0}" -ge "${BASE_CR:-0}" ] 2>/dev/null || FAILS="$FAILS cron少($CR<$BASE_CR)"
 [ "${MF:-999}" -le "${MIG_BASE:-0}" ] 2>/dev/null || FAILS="$FAILS 新增失败迁移($MF>$MIG_BASE)"
 dbwrite || FAILS="$FAILS 真写失败"
+# 2026-11-26 事故 S0051：升级/迁移后必须验库完整性，坏了立刻回滚（回滚会还原迁移前快照）
+dbintegrity || FAILS="$FAILS 库完整性损坏($(grep -c ^BAD /tmp/dbgate.out)项)"
 if [ -n "$FAILS" ]; then say "✗ 验证不通过：$FAILS"; rollback; fi
 say "  ✓ 硬验证通过"
 }

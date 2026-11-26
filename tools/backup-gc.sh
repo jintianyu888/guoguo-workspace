@@ -12,6 +12,16 @@ LOG=$W/state/work/backup-gc.log
 LED=$W/state/backup-gc-ledger.jsonl
 APPLY=${GC_APPLY:-0}
 QDAYS=${QDAYS:-7}
+# 2026-11-26 治本：宽限期跟磁盘水位走，避免隔离区每天锁 250G 把 D 盘顶到临界
+for _m in /mnt/d /mnt/x; do
+  if mountpoint -q "$_m" 2>/dev/null; then
+    _p=$(df --output=pcent "$_m" 2>/dev/null | tail -1 | tr -dc "0-9")
+    if [ -n "$_p" ]; then
+      if [ "$_p" -ge 85 ] && [ "$QDAYS" -gt 1 ]; then QDAYS=1; fi
+      if [ "$_p" -ge 75 ] && [ "$_p" -lt 85 ] && [ "$QDAYS" -gt 3 ]; then QDAYS=3; fi
+    fi
+  fi
+done
 TDAYS=${TDAYS:-7}
 PDAYS=${PDAYS:-3}
 FREED_TOTAL=0

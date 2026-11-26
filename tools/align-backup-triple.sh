@@ -74,19 +74,28 @@ while read -r f; do
     if [ "$AVAIL" -lt "$NEED" ]; then say "  ⚠ $d 空间不足(余 $AVAIL B 需 $NEED B)，跳过: $f"; continue; fi
     if [ "$DRY" = "1" ]; then say "  [dry] $d 将补 $f ($S 字节, 源=$SRC)"; continue; fi
     t0=$(date +%s)
-    if cp -f "$SRC" "$DST.part"; then
+    # 2026-11-26：9p 大文件复制会中途断（11-25/11-26 X 盘两次）。改 rsync 续传 + 3 次重试；
+    # 失败保留 .part 以便下次续传（不再一失败就删，删除只针对大小不符的坏件）。
+    OK=0
+    for try in 1 2 3; do
+      timeout 7200 rsync -a --partial --append-verify --inplace "$SRC" "$DST.part" >/dev/null 2>&1
       DS=$(stat -c %s "$DST.part" 2>/dev/null || echo 0)
-      if [ "$DS" = "$S" ]; then
-        mv -f "$DST.part" "$DST"
-        say "  → $d 补 $f ($DS 字节, 耗时 $(( $(date +%s) - t0 ))s, 源=$SRC)"
-      else
-        say "  ❌ $d 大小不符 $DS 不等 $S，删 .part: $f"
-        rm -f "$DST.part"
-      fi
+      if [ "$DS" = "$S" ]; then OK=1; break; fi
+      say "  ↻ $d 第 $try 次未完成（$DS/$S），5 秒后续传"
+      sleep 5
+      [ $(date +%s) -ge "$DL" ] && { say "⏰ 硬截止到达，保留 .part 待明日续传: $f"; break; }
+    done
+    if [ "$OK" = "1" ]; then
+      mv -f "$DST.part" "$DST"
+      say "  → $d 补 $f ($S 字节, 耗时 $(( $(date +%s) - t0 ))s, 源=$SRC)"
     else
-      RC=$?
-      say "  ❌ $d 复制失败 $f (cp rc=$RC)，删 .part 保留空间"
-      rm -f "$DST.part"
+      DS=$(stat -c %s "$DST.part" 2>/dev/null || echo 0)
+      if [ "$DS" -gt "$S" ]; then
+        say "  ❌ $d .part 比源大（$DS > $S），删坏件: $f"
+        rm -f "$DST.part"
+      else
+        say "  ❌ $d 复制未完成（$DS/$S），保留 .part 待续传: $f"
+      fi
     fi
   done
 done < "$T"

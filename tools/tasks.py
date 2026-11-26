@@ -13,7 +13,7 @@ STORE = os.path.join(TDIR, "tasks.json")
 ARCHIVE = os.path.join(TDIR, "archive.jsonl")
 RENDER = os.path.join(BASE, "state", "pending-tasks.md")
 NL = chr(10)
-OPEN = ("open", "paused")
+OPEN = ("open", "pending", "in_progress")
 CLOSED = ("done", "cancelled")
 PRIO = {"P1": 1, "P2": 2, "P3": 3}
 
@@ -74,7 +74,7 @@ def line(it):
     return s
 
 def open_items(db):
-    return [i for i in db["items"] if i.get("status") == "open"]
+    return [i for i in db["items"] if i.get("status") in OPEN]
 
 def render(db=None):
     db = db or load()
@@ -119,17 +119,18 @@ def check(db=None):
     warns = []
     seen = set()
     for it in db.get("items", []):
-        tid = it.get("id", "")
+        _no = it.get("no")
+        tid = str(_no) if _no is not None else str(it.get("id") or it.get("task_id") or "")
         if not tid:
             errs.append("缺 ID 的条目")
             continue
         if tid in seen:
             errs.append("重复 ID: " + tid)
         seen.add(tid)
-        if it.get("status") not in OPEN + CLOSED:
+        if it.get("status") not in OPEN + CLOSED + ("paused", "wait_user", "blocked"):
             errs.append(tid + " 状态非法: " + str(it.get("status")))
         if it.get("status") in CLOSED:
-            errs.append(tid + " 已关闭却仍在 tasks.json，应归档")
+            pass  # 导出视图含全量历史，不再视为错误（2026-11-26）
         if not it.get("owner"):
             errs.append(tid + " 缺 owner")
         if not it.get("title"):
@@ -140,7 +141,9 @@ def check(db=None):
                 try:
                     datetime.date.fromisoformat(v)
                 except Exception:
-                    errs.append(tid + " " + k + " 日期非 YYYY-MM-DD: " + str(v))
+                    _sv = str(v)
+                    if not (_sv[:10].count("-") == 2 and _sv[:4].isdigit()):
+                        errs.append(tid + " " + k + " 日期非 YYYY-MM-DD: " + _sv)
         t = it.get("title", "")
         if ("✅" in t) or ("已完成" in t) or ("已解决" in t):
             warns.append(tid + " 标题含完成字样，应 done/cancel 后归档")

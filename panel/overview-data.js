@@ -1,11 +1,11 @@
 window.__GV={
- "generated_at": "2026-11-25 23:14:32",
+ "generated_at": "2026-11-26 23:19:08",
  "domains": {
   "服务": {
    "level": "ok",
    "headline": "网关正常",
    "details": [
-    "systemd=active pid=3091485 NRestarts=2",
+    "systemd=active pid=40665 NRestarts=0",
     "health HTTP=200",
     "DB 真实写探针=通过"
    ],
@@ -16,17 +16,17 @@ window.__GV={
    "level": "warn",
    "headline": "逾期 1",
    "details": [
-    "未完成 1（等你 1）· 逾期 1",
-    "定时任务 24h 504 跑 69 败 = 86.3%"
+    "未完成 3（等你 1）· 逾期 1",
+    "定时任务 24h 340 跑 68 败 = 80.0%"
    ],
    "source": "tasks.db+cron_run_receipts",
    "name": "任务"
   },
   "资金": {
    "level": "ok",
-   "headline": "deepseek ¥75.58",
+   "headline": "deepseek ¥69.12",
    "details": [
-    "deepseek 可用 75.58",
+    "deepseek 可用 69.12",
     "快照 0.1 小时前",
     "kimi: {\"currency\": \"CNY\", \"plan\": \"Plus 会员（K3.1 Pro）\"}",
     "zai: {\"norm\": {\"label\": \"GLM Coding（季卡）\", \"unit\": \"credits\", \"h5\": {\"used\": null, \"limit\": 2000, \"unit\": \"credits\", \"remaining\": null, \"pct\": null, \"reset_at\": \"2026-10-24T20:38:00+08:00\", \"source\": \"https://open.bigmodel.cn/coding-plan/personal/overview\", \"reason\": \"5h 窗口重置时间已过期(2026-10-24T20:38:00+08:00)，页面数值属旧窗口残留\"}, \"week\": {\"used\": 6350, \"limit\": 10000, \"unit\": \"credits\", \"remaining\": 3650, \"pct\": 63.5, \"reset_at\": \"2026-10-29T20:46:00+08:00\", \"source\": \"https://open.bigmodel.cn/coding-plan/personal/overview\"}, \"plan_expire\": \"2027-01-15T00:00:00+08:00\", \"plan_expire_source\": \"页面实读\", \"plan_expire_reason\": null, \"captured_at\": {\"at\": \"2026-10-28T22:18:00+08:00\", \"kind\": \"snapshot\", \"note\": \"quotas 抓取时间\"}, \"status\": \"error\"}, \"h5_used\": 3}"
@@ -35,15 +35,15 @@ window.__GV={
    "name": "资金"
   },
   "存储": {
-   "level": "warn",
-   "headline": "最紧 D 98%",
+   "level": "ok",
+   "headline": "最紧 NAS 82%",
    "details": [
-    "根盘 用 34%（余 671366392 KB）",
-    "D 用 98%（余 13987156 KB）",
-    "E 用 78%（余 893538020 KB）",
-    "H 用 52%（余 1892361200 KB）",
-    "NAS 用 80%（余 1175607244 KB）",
-    "最新归档 2026-11-25T01-02-20.250+08（0.2 天前）"
+    "根盘 用 34%（余 662132776 KB）",
+    "D 用 58%（余 279116784 KB）",
+    "E 用 79%（余 836017636 KB）",
+    "H 用 55%（余 1790286020 KB）",
+    "NAS 用 82%（余 1022300128 KB）",
+    "最新归档 2026-11-26T01-01-44.664+08（0.8 天前）"
    ],
    "source": "df+归档 mtime",
    "name": "存储"
@@ -53,9 +53,9 @@ window.__GV={
    "headline": "NVR 在线",
    "details": [
     "NVR HTTP=200",
-    "NVR 日扫 日志 14.7 小时前",
+    "NVR 日扫 日志 14.9 小时前",
     "人脸扫描 日志 未采集",
-    "新闻 日志 0.9 小时前",
+    "新闻 日志 4.0 小时前",
     "今日告警 0 条（其中标 P0 0）"
    ],
    "source": "NVR HTTP+日志 mtime+alerts.db",
@@ -75,8 +75,7 @@ window.__GV={
  "summary": {
   "bad": [],
   "warn": [
-   "任务",
-   "存储"
+   "任务"
   ],
   "verdict": "warn"
  }

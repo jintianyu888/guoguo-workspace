@@ -2,6 +2,7 @@
 # 0800-todo-reminder.sh —— 07:45 推送 08:00 窗口待办（只在 pending 文件存在时发）
 # 自测：DRY=1 bash tools/0800-todo-reminder.sh
 set -uo pipefail
+export PATH=/home/j/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
 WS=/home/j/.openclaw/workspace
 P="$WS/state/work/pending-0800.md"
 [ -f "$P" ] || exit 0

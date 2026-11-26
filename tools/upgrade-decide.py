@@ -78,13 +78,25 @@ def main():
         _emit(a, result)
         return 0
 
-    result.update(action="arm", reason="新版本 " + latest + " + 备份完整")
-    if not a.dry_run:
-        with open(ARM, "w") as f:
-            f.write(latest + "\n")
-        with open(APPR, "w") as f:
-            json.dump({"approved_by": "policy-20261122-auto", "target": latest,
-                       "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z")}, f, ensure_ascii=False)
+    # 2026-11-26 主公令：恢复"提案制"——判定结果只写提案，不自动批准
+    # （11.10 事故期间 policy-auto 自动批准导致无人确认就上了坏版本）
+    approved = None
+    try:
+        approved = json.load(open(APPR, encoding="utf-8")).get("target")
+    except Exception:
+        approved = None
+    if approved == latest:
+        result.update(action="arm", reason="新版本 " + latest + " + 备份完整 + 已有批准")
+        if not a.dry_run:
+            with open(ARM, "w") as f:
+                f.write(latest + "\n")
+    else:
+        result.update(action="propose", reason="新版本 " + latest + "，待主公批准（回复 批准升级 " + latest + "）")
+        if not a.dry_run:
+            with open(os.path.join(W, "state/work/upgrade-proposal.json"), "w") as f:
+                json.dump({"target": latest, "current": cur,
+                           "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                           "how": "回复 批准升级 " + latest}, f, ensure_ascii=False)
     _emit(a, result)
     return 0
 

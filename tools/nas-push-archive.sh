@@ -82,7 +82,19 @@ else echo "❌ 复制到 X 失败" >> "$LOG"; exit 1; fi
     SKIPD=0
   fi
   if [ "$SKIPD" = "0" ]; then
-  cp -f "$F" "$OUT/$B.part" && mv -f "$OUT/$B.part" "$OUT/$B" || { echo "复制到 D 失败" >> "$LOG"; exit 1; }
+  # 2026-11-26：cp 一次性复制在 9p 上会中途断（11-26 03:18 就是这条把整条链 abort）。
+  # 改 rsync 续传 + 3 次重试；失败保留 .part 待次日续传，且不再阻断群晖/E/H 推送。
+  DOK=0
+  for _i in 1 2 3; do
+    timeout 7200 rsync -a --partial --append-verify --inplace "$F" "$OUT/$B.part" >>"$LOG" 2>&1
+    RS=$(stat -c %s "$OUT/$B.part" 2>/dev/null || echo 0)
+    if [ "$RS" = "$S" ]; then mv -f "$OUT/$B.part" "$OUT/$B"; DOK=1; break; fi
+    echo "=== $(date '+%F %T') D 复制第 $_i 次未完成（$RS/$S 字节），5 秒后续传 ===" >> "$LOG"
+    sleep 5
+  done
+  if [ "$DOK" != "1" ]; then
+    echo "❌ $(date '+%F %T') 复制到 D 失败（rsync 3 次未完成；余 $DFREE KB 需 $DNEED KB），保留 .part 待续传；继续 X/群晖/E/H" >> "$LOG"
+  fi
   DS=$(stat -c%s "$OUT/$B")
   if [ "$DS" != "$S" ]; then echo "❌ D 盘大小不符 本地=$S D=$DS" >> "$LOG"; exit 1; fi
   echo "✅ 已落 D 盘: $B ($DS 字节)" >> "$LOG"

@@ -132,6 +132,11 @@ PY
   timeout 900 openclaw doctor --fix >>"$LOG" 2>&1
   DRC=$?
   say "  doctor rc=$DRC"
+  # 2026-11-26 事故 S0051：迁移后立刻验库，坏了直接回滚（回滚会还原四库快照）
+  if ! timeout 180 bash "$WS/tools/db-integrity-gate.sh" >/tmp/dbgate-panel.out 2>&1; then
+    say "  ✗ 迁移后库完整性损坏：$(grep ^BAD /tmp/dbgate-panel.out | head -2 | tr "\n" " ")"
+    ROLLBACK=1; ROLLBACK_REASON="迁移后 state 库完整性损坏"
+  fi
   [ "$DRC" != "0" ] && say "  ⚠ doctor 非零（不直接判失败，交由第 5 步健康校验与第 6 步版本/清单核对判定）"
 fi
 
@@ -175,6 +180,8 @@ if [ "${ROLLBACK:-0}" = "1" ]; then
   done
   [ -f "$SNAP/credentials.sqlite" ] && cp -f "$SNAP/credentials.sqlite" /home/j/.openclaw/client/credentials.sqlite && say "  已回滚 credentials.sqlite"
   [ -f "$SNAP/agents-registry.json" ] && cp -f "$SNAP/agents-registry.json" /home/j/.openclaw/state/agents-registry.json && say "  已回滚 agents-registry.json"
+  # 2026-11-26：旧版二进制会被降级保护挡住（config 版本戳），先改戳
+  python3 "$WS/tools/stamp-config-version.py" "$FROM" >>"$LOG" 2>&1
   ALLOW_UPGRADE_RESTART=1 bash "$WS/tools/restart-gateway.sh" --reason "升级失败回滚 $FROM" >>"$LOG" 2>&1
   H2=000
   for i in $(seq 1 40); do

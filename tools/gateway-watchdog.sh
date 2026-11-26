@@ -123,8 +123,23 @@ case "$SR" in
   running|degraded) ;;
   *) log "systemd user 实例不可用(state=${SR:-none})，本轮不拉起，交人工/自救程序"; exit 0;;
 esac
-systemctl --user reset-failed openclaw-gateway 2>/dev/null || true
-timeout 200 systemctl --user start openclaw-gateway >>"$LOG" 2>&1 || true
+# 2026-11-26 事故 S0051：端口已占用时绝不再拉第二实例（新实例重建 -wal 会把库写坏）
+# 2026-11-26 事故：库坏时每次启动都 exit 78，看门狗每 30 分钟窗口重拉一次，
+# 整整重试 10 小时并放大页损坏。硬熔断：6 小时内 >=3 次 78/坏库就停手，等人工放行。
+BRESET="$W/state/work/.gw-breaker-reset"
+if [ ! -f "$BRESET" ]; then
+  N78=$(journalctl --user -u openclaw-gateway --since "6 hours ago" --no-pager 2>/dev/null | grep -cE "status=78|database disk image is malformed")
+  [ -z "$N78" ] && N78=0
+  if [ "$N78" -ge 3 ]; then
+    log "熔断：6 小时内 $N78 次 FATAL-78/坏库，停止自动拉起（人工处置后 touch $BRESET 解除）"
+    if [ "$ALARMED" != "1" ]; then
+      timeout 60 bash "$W/tools/notify.sh" --alert "GATEWAY-FATAL-BREAKER: 6h 内 $N78 次 78/坏库，看门狗已停止自动拉起，需人工处置（详情 $LOG）" >/dev/null 2>&1 || true
+      echo "$FIRST $TRY $BOOTID 1 $FAILSEQ $UMGEN" > "$STATE" 2>/dev/null || true
+    fi
+    exit 4
+  fi
+fi
+bash "$W/tools/gw-start-guard.sh" >>"$LOG" 2>&1 || true
 sleep 20
 if alive; then
   log "拉起成功"

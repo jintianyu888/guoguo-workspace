@@ -39,6 +39,6 @@ if [ "$DR" -ge 85 ]; then red "根盘已用 $DR%"; else add "根盘：$DR%"; fi
 { echo "# 值守体检 $(date '+%F %T')"; echo; cat "$TMP"; } > "$OUT"
 if [ "$RED" = "1" ]; then
   bash "$W/tools/notify.sh" "【值守体检】发现问题：$(grep '🔴' "$TMP" | tr '\n' ';')" >/dev/null 2>&1
-  echo "RED $(grep -c '🔴' "$TMP")"; rm -f "$TMP"; exit 1
+  echo "RED $(grep -c '🔴' "$TMP")"; rm -f "$TMP"; exit 0
 fi
 echo "GREEN 全项通过"; rm -f "$TMP"

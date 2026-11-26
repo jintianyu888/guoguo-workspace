@@ -3,8 +3,9 @@
 # v2 2026-11-25: 修尾块死循环（剩余不足 1MB 时 mb=0 会原地打转），mb=0 直接跳出转 tail 补尾
 set -uo pipefail
 SRC="${1:?src}"
-DST=/mnt/x/openclaw-backups/$(basename "$SRC")
-LOG=/home/j/.openclaw/workspace/state/work/x-copy-run.log
+DEST_DIR="${DEST_DIR:-/mnt/x/openclaw-backups}"
+DST="$DEST_DIR/$(basename "$SRC")"
+LOG="${COPY_LOG:-/home/j/.openclaw/workspace/state/work/x-copy-run.log}"}
 say(){ echo "$(date '+%F %T') $*" | tee -a "$LOG"; }
 S=$(stat -c%s "$SRC"); say "start src=$SRC size=$S dst=$DST"
 rm -f "$DST.part"
