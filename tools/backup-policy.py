@@ -132,8 +132,9 @@ def main():
 
     # 每个对象的副本数与冷档覆盖
     for n, e in inv.items():
-        e["copies"] = len(e["locs"])
-        e["cold"] = bool(set(e["locs"]) & COLD)
+        e["solid"] = {l for l in e["locs"] if not l.endswith("q")}
+        e["copies"] = len(e["solid"])
+        e["cold"] = bool(e["solid"] & COLD)
 
     # 槽位删除
     for loc, path, tier, slots in LOCS:
@@ -142,10 +143,11 @@ def main():
             if n in keep or loc.endswith("q"):
                 continue
             e = inv[n]
-            rest = set(e["locs"]) - {loc}
+            rest = set(e["solid"]) - {loc}
             if n == newest:
                 plan["protected"].append(f"{loc}:{n} 最新档不删"); continue
-            if len(rest) < 2 or not (rest & COLD):
+            h_only = len(rest) == 1 and rest == {"h"} and loc != "h"
+            if (len(rest) < 2 or not (rest & COLD)) and not h_only:
                 plan["protected"].append(f"{loc}:{n} 删除后仅{len(rest)}份/冷档{bool(rest & COLD)}，受保护")
                 continue
             plan["deletes"].append({"loc": loc, "name": n, "size": e["size"],
@@ -164,8 +166,9 @@ def main():
                              and not any(d["loc"] == loc and d["name"] == n for d in plan["deletes"])], key=dkey):
                 if pct - extra * 100 * inv[n]["size"] / u.total < 85:
                     break
-                rest = set(inv[n]["locs"]) - {loc}
-                if n == newest or len(rest) < 2 or not (rest & COLD):
+                rest = set(inv[n]["solid"]) - {loc}
+                h_only = len(rest) == 1 and rest == {"h"} and loc != "h"
+                if n == newest or ((len(rest) < 2 or not (rest & COLD)) and not h_only):
                     continue
                 plan["deletes"].append({"loc": loc, "name": n, "size": inv[n]["size"],
                                         "why": f"水位{pct:.0f}%延伸", "rest": len(rest)})
@@ -175,15 +178,18 @@ def main():
     for n, e in inv.items():
         if e["copies"] > 1:
             continue
-        only = next(iter(e["locs"]))
-        for tgt in ("h", "e"):
+        if e["copies"] == 1 and next(iter(e["solid"])) == "h":
+            continue
+        only = next(iter(e["solid"])) if e["solid"] else next(iter(e["locs"]))
+        # 只剩隔离区副本的对象要落两块盘，单副本对象落一块冷档即可
+        targets = ("h",) if e["copies"] == 1 else ("h", "e")
+        for tgt in targets:
             if tgt == only:
                 continue
             u = du(dict((l[0], l[1]) for l in LOCS)[tgt])
             if u and u.free > e["size"] * 1.3:
                 plan["copies"].append({"from": e["locs"][only], "to": str(Path(dict((l[0], l[1]) for l in LOCS)[tgt]) / n),
                                        "loc": tgt, "name": n, "why": "SINK 单副本下沉"})
-                break
 
     # 补齐：keep 集合在冷档缺副本
     if a.repair:
@@ -244,7 +250,8 @@ def main():
                     continue
                 others = [Path(pp) / f.name for ll, pp, _, _ in LOCS if ll != loc and (Path(pp) / f.name).is_file()]
                 cold_ok = any(ll in COLD and (Path(pp) / f.name).is_file() for ll, pp, _, _ in LOCS if ll != loc)
-                if len(others) >= 2 and cold_ok:
+                h_ok = any(ll == "h" and (Path(pp) / f.name).is_file() for ll, pp, _, _ in LOCS if ll != loc)
+                if (len(others) >= 2 and cold_ok) or h_ok:
                     f.unlink(); log(f"PURGE {loc}:{f.name} (剩{len(others)}份)")
                 else:
                     log(f"PROTECT {loc}:{f.name} (剩{len(others)}份/冷档{cold_ok})")

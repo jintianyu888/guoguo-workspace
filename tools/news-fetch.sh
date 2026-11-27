@@ -88,7 +88,7 @@ try:
         ew = None
         for _ in range(2):
             try:
-                ew = json.loads(fetch("https://wttr.in/%s?format=j1" % ecity, 12).decode("utf-8", "replace"))
+                ew = json.loads(fetch("https://wttr.in/%s?format=j1" % (ec.get("query") or ecity), 12).decode("utf-8", "replace"))
                 break
             except Exception:
                 ew = None
@@ -349,20 +349,36 @@ def grab_hn(url, n=8):
         d = json.loads(get(url))
         return [h.get("title","")[:90] for h in d.get("hits", [])[:n] if h.get("title")]
     except Exception: return []
+USED = set()  # 2026-11-27：跨板块去重，先出的栏占位，后面的栏不再重复同一条
 for cat, urls in cfg.get("sources", {}).items():
-    lines = []
+    per = []
     for u in urls:
         if u.startswith("HN:"):
-            lines += grab_hn(u[3:])
+            per.append(grab_hn(u[3:]))
         else:
-            lines += grab_rss(u)
+            per.append(grab_rss(u))
+    # 2026-11-27：各源轮转交错，避免先抓的源把 8 条额度占满（果果验收发现 HN 被 infoq 盖住）
+    lines = []
+    for i in range(max([len(x) for x in per] or [0])):
+        for x in per:
+            if i < len(x):
+                lines.append(x[i])
+    kw = (cfg.get("filters") or {}).get(cat) or []
     uniq, seen = [], set()
+    passed = []
     for t in lines:
         k = re.sub(r"\s+", "", t)
-        if not k or k in seen or k in SEEN: continue
-        seen.add(k); uniq.append(t)
+        if not k or k in seen or k in SEEN or k in USED: continue
+        seen.add(k); passed.append(t)
+        if kw and not any(w.lower() in t.lower() for w in kw): continue
+        uniq.append(t)
+    # 关键词过滤后为空则回退到未过滤，避免整段消失
+    if not uniq and passed:
+        uniq = passed
     if uniq:
         print(f"【{cat}】")
-        for t in uniq[:8]: print("-", t)
+        for t in uniq[:8]:
+            print("-", t)
+            USED.add(re.sub(r"\s+", "", t))
         print()
 PY

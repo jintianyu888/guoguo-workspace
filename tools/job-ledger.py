@@ -113,13 +113,24 @@ def sync():
     except Exception as e:
         print("孤儿收尾失败:", e)
 
-def classify(status, err):
+def classify(status, err, started=None):
     e = (err or "").lower()
     if status == "ok":
         return "ok"
     if status == "skipped":
         return "skip"
-    if "gateway stopping" in e or "cancelled" in e or "quiet" in e:
+    if status == "running":
+        # 2026-11-27：长任务（备份 2.6h）跑着时不能算失败；超 2h 未收尾归 stale 单独提示，
+        # 与 sync 的孤儿阈值（2h）对齐，既不误报也不掩盖真挂死。
+        try:
+            import datetime as _dt
+            age = (_dt.datetime.now()
+                   - _dt.datetime.strptime(started, "%Y-%m-%d %H:%M:%S")).total_seconds()
+            return "stale" if age > 2 * 3600 else "run"
+        except Exception:
+            return "run"
+    if ("gateway stopping" in e or "cancelled" in e or "quiet" in e
+            or "interrupted by gateway restart" in e or "aborted for restart" in e):
         return "env"
     if "timed out" in e or "timeout" in e:
         return "timeout"
@@ -129,19 +140,19 @@ def classify(status, err):
 def report(hours):
     c = conn()
     since = time.strftime("%F %T", time.localtime(time.time() - hours * 3600))
-    rows = c.execute("SELECT status, error FROM runs WHERE started>=?", (since,)).fetchall()
-    b = {"ok": 0, "skip": 0, "env": 0, "timeout": 0, "fail": 0}
-    for st, er in rows:
-        b[classify(st, er)] += 1
-    print("近 %d 小时：共 %d 次 | 成功 %d｜跳过 %d｜环境中断 %d｜超时 %d｜真失败 %d"
-          % (hours, len(rows), b["ok"], b["skip"], b["env"], b["timeout"], b["fail"]))
+    rows = c.execute("SELECT status, error, started FROM runs WHERE started>=?", (since,)).fetchall()
+    b = {"ok": 0, "skip": 0, "env": 0, "timeout": 0, "fail": 0, "run": 0, "stale": 0}
+    for st, er, sd in rows:
+        b[classify(st, er, sd)] += 1
+    print("近 %d 小时：共 %d 次 | 成功 %d｜跳过 %d｜环境中断 %d｜超时 %d｜真失败 %d｜进行中 %d｜超窗未收尾 %d"
+          % (hours, len(rows), b["ok"], b["skip"], b["env"], b["timeout"], b["fail"], b["run"], b["stale"]))
     bad = c.execute("SELECT name,status,error,count(*),max(started) FROM runs WHERE started>=? AND status!='ok' "
                     "GROUP BY name,status,substr(ifnull(error,''),1,40) ORDER BY count(*) DESC LIMIT 8", (since,)).fetchall()
     for nm, st, er, n, last in bad:
-        k = classify(st, er)
-        if k in ("ok", "skip"):
+        k = classify(st, er, last)
+        if k in ("ok", "skip", "run"):
             continue
-        print("  %s %-26s %2d 次 最近 %s | %s" % ({"env": "⏸", "timeout": "⏱", "fail": "❌"}[k], (nm or "?")[:26], n, last, (er or "")[:40]))
+        print("  %s %-26s %2d 次 最近 %s | %s" % ({"env": "⏸", "timeout": "⏱", "fail": "❌", "stale": "⚠"}[k], (nm or "?")[:26], n, last, (er or "")[:40]))
 
 
 def prev_slot(sch, before_ts):
